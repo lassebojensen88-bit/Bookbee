@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import ClientLayout from '../../components/ClientLayout';
 import { useProfile } from '../../contexts/ProfileContext';
-import { loadPublicPageConfig, savePublicPageConfig, resetPublicPageConfig, PublicPageConfig } from '../../utils/publicPageConfig';
+import { PublicPageConfig } from '../../utils/publicPageConfig';
+import { getSalon, updateSalon } from '../../utils/api';
 
 interface ClientProfileProps {
   salonId?: string;
@@ -38,10 +39,41 @@ export default function ClientProfile({ salonId }: ClientProfileProps) {
     });
   }, [profile]);
 
-  // Load public page config
+  // Load public page config from backend
   useEffect(() => {
-    const cfg = loadPublicPageConfig((salonId || profile.id?.toString()));
-    setPublicConfig(cfg);
+    const id = salonId ? Number(salonId) : profile.id;
+    if (!id) return;
+    let aborted = false;
+    getSalon(id)
+      .then(salon => {
+        if (aborted) return;
+        const cfg: PublicPageConfig = {
+          // fallback defaults merged (minimal to avoid duplication of constants — keep existing fields if present)
+          title: 'Velkommen til vores online booking',
+            subtitle: 'Professionel behandling – nemt at booke',
+            introText: 'Her kan du trygt booke din næste tid. Vi glæder os til at tage imod dig og give dig en god oplevelse.',
+            highlightPoints: ['Erfarne behandlere','Nem online booking','Kvalitet & tryghed'],
+            termsTitle: 'Generelle vilkår',
+            termsBody: 'Afbud skal ske senest 4 timer før din aftale. Udeblivelser eller for sent afbud kan medføre gebyr svarende til 50% af behandlingens pris.',
+            cancellationTitle: 'Afbuds- og ændringspolitik',
+            cancellationBody: 'Du kan nemt aflyse eller ændre din tid via bekræftelsesmail eller ved at kontakte os. Senere end 4 timer før – kontakt os direkte.',
+            footerNote: 'Tak fordi du vælger os – vi glæder os til at se dig! ✂️',
+            primaryColor: '#111827',
+            accentColor: '#6366f1',
+            ctaEnabled: true,
+            ctaText: 'Book tid',
+            ctaLink: '#',
+            logoUrl: undefined,
+            coverImageUrl: undefined,
+            updatedAt: new Date().toISOString(),
+          ...(salon.publicConfig || {})
+        } as PublicPageConfig;
+        setPublicConfig(cfg);
+      })
+      .catch(err => {
+        console.warn('Kunne ikke hente publicConfig', err);
+      });
+    return () => { aborted = true; };
   }, [salonId, profile.id]);
 
   function handleEdit() {
@@ -106,19 +138,49 @@ export default function ClientProfile({ salonId }: ClientProfileProps) {
     setPublicForm(null);
   }
 
-  function savePublic(e: React.FormEvent) {
+  async function savePublic(e: React.FormEvent) {
     e.preventDefault();
     if (!publicForm) return;
-    const merged = savePublicPageConfig((salonId || profile.id?.toString()), publicForm);
-    setPublicConfig(merged || publicForm);
-    setEditingPublic(false);
+    try {
+      const id = salonId ? Number(salonId) : profile.id;
+      const updated = await updateSalon(id, { publicConfig: { ...publicForm, updatedAt: new Date().toISOString() } });
+      setPublicConfig(updated.publicConfig || publicForm);
+      setEditingPublic(false);
+    } catch (err) {
+      console.error('Kunne ikke gemme publicConfig', err);
+      alert('Kunne ikke gemme offentlig side konfiguration');
+    }
   }
 
-  function resetPublic() {
+  async function resetPublic() {
     if (!confirm('Nulstil til standard tekster?')) return;
-    resetPublicPageConfig((salonId || profile.id?.toString()));
-    const cfg = loadPublicPageConfig((salonId || profile.id?.toString()));
-    setPublicConfig(cfg);
+    try {
+      const base: PublicPageConfig = {
+        title: 'Velkommen til vores online booking',
+        subtitle: 'Professionel behandling – nemt at booke',
+        introText: 'Her kan du trygt booke din næste tid. Vi glæder os til at tage imod dig og give dig en god oplevelse.',
+        highlightPoints: ['Erfarne behandlere','Nem online booking','Kvalitet & tryghed'],
+        termsTitle: 'Generelle vilkår',
+        termsBody: 'Afbud skal ske senest 4 timer før din aftale. Udeblivelser eller for sent afbud kan medføre gebyr svarende til 50% af behandlingens pris.',
+        cancellationTitle: 'Afbuds- og ændringspolitik',
+        cancellationBody: 'Du kan nemt aflyse eller ændre din tid via bekræftelsesmail eller ved at kontakte os. Senere end 4 timer før – kontakt os direkte.',
+        footerNote: 'Tak fordi du vælger os – vi glæder os til at se dig! ✂️',
+        primaryColor: '#111827',
+        accentColor: '#6366f1',
+        ctaEnabled: true,
+        ctaText: 'Book tid',
+        ctaLink: '#',
+        logoUrl: undefined,
+        coverImageUrl: undefined,
+        updatedAt: new Date().toISOString()
+      };
+      const id = salonId ? Number(salonId) : profile.id;
+      await updateSalon(id, { publicConfig: base });
+      setPublicConfig(base);
+    } catch (err) {
+      console.error('Kunne ikke nulstille publicConfig', err);
+      alert('Nulstilling fejlede');
+    }
   }
 
   const publicPageUrl = publicConfig && (salonId || profile.id) ? `/p/${salonId || profile.id}` : null;

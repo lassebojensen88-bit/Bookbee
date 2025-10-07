@@ -21,12 +21,22 @@ app.get('/admins', (req: Request, res: Response) => {
 // ========== Salon endpoints (Prisma) ==========
 app.get('/salons', async (_req: Request, res: Response) => {
   try {
-    const salons = await prisma.salon.findMany({
-      include: { services: true }
-    });
+    const salons = await prisma.salon.findMany();
     res.json(salons);
   } catch (error) {
     res.status(500).json({ error: 'Kunne ikke hente saloner' });
+  }
+});
+
+// Hent enkelt salon (inkl services) – bruges til profil / public page
+app.get('/salons/:id', async (req: Request, res: Response) => {
+  try {
+    const id = Number(req.params.id);
+    const salon = await prisma.salon.findUnique({ where: { id } });
+    if (!salon) return res.status(404).json({ error: 'Salon ikke fundet' });
+    res.json(salon);
+  } catch (error) {
+    res.status(500).json({ error: 'Kunne ikke hente salon' });
   }
 });
 
@@ -70,8 +80,8 @@ app.patch('/salons/:id', async (req: Request, res: Response) => {
 app.delete('/salons/:id', async (req: Request, res: Response) => {
   try {
     const id = Number(req.params.id);
-    await prisma.booking.deleteMany({ where: { salonId: id } });
-    await prisma.service.deleteMany({ where: { salonId: id } });
+  await prisma.booking.deleteMany({ where: { salonId: id } });
+  await prisma.service.deleteMany({ where: { salonId: id } });
     await prisma.salon.delete({ where: { id } });
     res.status(204).send();
   } catch (error) {
@@ -83,7 +93,7 @@ app.delete('/salons/:id', async (req: Request, res: Response) => {
 app.get('/salons/:salonId/services', async (req: Request, res: Response) => {
   try {
     const salonId = Number(req.params.salonId);
-    const services = await prisma.service.findMany({ where: { salonId } });
+  const services = await prisma.service.findMany({ where: { salonId } });
     res.json(services);
   } catch {
     res.status(500).json({ error: 'Kunne ikke hente services' });
@@ -123,8 +133,8 @@ app.patch('/services/:id', async (req: Request, res: Response) => {
 app.delete('/services/:id', async (req: Request, res: Response) => {
   try {
     const id = Number(req.params.id);
-    await prisma.booking.deleteMany({ where: { serviceId: id } });
-    await prisma.service.delete({ where: { id } });
+  await prisma.booking.deleteMany({ where: { serviceId: id } });
+  await prisma.service.delete({ where: { id } });
     res.status(204).send();
   } catch (error) {
     res.status(500).json({ error: 'Kunne ikke slette service' });
@@ -153,7 +163,7 @@ app.post('/salons/:salonId/bookings', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Manglende felter (serviceId, customerName, startsAt, endsAt)' });
     }
     // Simple overlap check
-    const overlap = await prisma.booking.findFirst({
+  const overlap = await prisma.booking.findFirst({
       where: {
         salonId,
         OR: [
@@ -164,7 +174,7 @@ app.post('/salons/:salonId/bookings', async (req: Request, res: Response) => {
     if (overlap) {
       return res.status(409).json({ error: 'Tidsrummet er allerede booket' });
     }
-    const booking = await prisma.booking.create({
+  const booking = await prisma.booking.create({
       data: {
         salonId,
         serviceId: Number(serviceId),
@@ -184,14 +194,15 @@ app.post('/salons/:salonId/bookings', async (req: Request, res: Response) => {
 app.patch('/bookings/:id', async (req: Request, res: Response) => {
   try {
     const id = Number(req.params.id);
-    const { startsAt, endsAt, status, notes } = req.body;
-    const booking = await prisma.booking.update({
+    const { startsAt, endsAt, status, notes, serviceId } = req.body;
+  const booking = await prisma.booking.update({
       where: { id },
       data: {
         startsAt: startsAt ? new Date(startsAt) : undefined,
         endsAt: endsAt ? new Date(endsAt) : undefined,
         status,
-        notes
+        notes,
+        serviceId: serviceId ? Number(serviceId) : undefined
       }
     });
     res.json(booking);
@@ -203,10 +214,82 @@ app.patch('/bookings/:id', async (req: Request, res: Response) => {
 app.delete('/bookings/:id', async (req: Request, res: Response) => {
   try {
     const id = Number(req.params.id);
-    await prisma.booking.delete({ where: { id } });
+  await prisma.booking.delete({ where: { id } });
     res.status(204).send();
   } catch (error) {
     res.status(500).json({ error: 'Kunne ikke slette booking' });
+  }
+});
+
+// ========== Public (unauthenticated) endpoints ==========
+// Return minimal salon data + active services + publicConfig
+app.get('/public/salons/:id', async (req: Request, res: Response) => {
+  try {
+    const id = Number(req.params.id);
+    const salon = await prisma.salon.findUnique({ where: { id } });
+    if (!salon) return res.status(404).json({ error: 'Salon ikke fundet' });
+    const services = await prisma.service.findMany({ where: { salonId: id, active: true } });
+    res.json({
+      id: salon.id,
+      name: salon.name,
+      address: salon.address,
+      type: salon.type,
+      publicConfig: salon.publicConfig || null,
+      services: services.map((s: any) => ({ id: s.id, name: s.name, durationMin: s.durationMin, price: s.price, active: s.active }))
+    });
+  } catch (e) {
+    res.status(500).json({ error: 'Kunne ikke hente offentlig salon data' });
+  }
+});
+
+// Only active services list
+app.get('/public/salons/:id/services', async (req: Request, res: Response) => {
+  try {
+    const id = Number(req.params.id);
+    const services = await prisma.service.findMany({ where: { salonId: id, active: true } });
+  res.json(services.map((s: any) => ({ id: s.id, name: s.name, durationMin: s.durationMin, price: s.price })));
+  } catch (e) {
+    res.status(500).json({ error: 'Kunne ikke hente services' });
+  }
+});
+
+// Public booking creation (no auth). Later: rate limiting / captcha / double opt-in.
+app.post('/public/salons/:id/bookings', async (req: Request, res: Response) => {
+  try {
+    const salonId = Number(req.params.id);
+    const { serviceId, customerName, customerEmail, startsAt } = req.body;
+    if (!serviceId || !customerName || !startsAt) {
+      return res.status(400).json({ error: 'Manglende felter (serviceId, customerName, startsAt)' });
+    }
+    const service = await prisma.service.findUnique({ where: { id: Number(serviceId) } });
+    if (!service || service.salonId !== salonId || !service.active) {
+      return res.status(400).json({ error: 'Ugyldig service' });
+    }
+    const start = new Date(startsAt);
+    const endsAt = new Date(start.getTime() + service.durationMin * 60000);
+    const overlap = await prisma.booking.findFirst({
+      where: {
+        salonId,
+        OR: [
+          { startsAt: { lte: endsAt }, endsAt: { gte: start } }
+        ]
+      }
+    });
+    if (overlap) return res.status(409).json({ error: 'Tidsrummet er allerede booket' });
+    const booking = await prisma.booking.create({
+      data: {
+        salonId,
+        serviceId: service.id,
+        customerName,
+        customerEmail,
+        startsAt: start,
+        endsAt,
+        status: 'SCHEDULED'
+      }
+    });
+    res.status(201).json({ id: booking.id, startsAt: booking.startsAt, endsAt: booking.endsAt, serviceId: booking.serviceId, status: booking.status });
+  } catch (e) {
+    res.status(500).json({ error: 'Kunne ikke oprette booking' });
   }
 });
 

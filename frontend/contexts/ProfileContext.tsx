@@ -197,3 +197,4 @@ export const ProfileProvider: React.FC<ProfileProviderProps> = ({ children, salo
     </ProfileContext.Provider>
   );
 };
+export default ProfileProvider;

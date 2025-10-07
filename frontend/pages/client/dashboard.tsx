@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
+import { useServices } from '../../utils/api';
 import { SalonIcon } from '../../components/icons';
 import ClientLayout from '../../components/ClientLayout';
 import { useProfile, ProfileProvider } from '../../contexts/ProfileContext';
@@ -17,8 +18,9 @@ interface BookingSlot {
 }
 
 interface Service {
+  id?: number; // optional API id when hentet fra backend
   name: string;
-  price: number;
+  price: number; // lokal brug: numeric kr.
   duration: number; // in hours
 }
 
@@ -888,24 +890,36 @@ const BookingsTimeline: React.FC<BookingsTimelineProps> = ({ onRevenueUpdate, sa
   // Load services dynamically from service management system
   const [services, setServices] = useState<Service[]>([]);
   
+  // API integration for services (fallback til localStorage hvis API ikke tilgængelig)
+  const { data: apiServices, error: apiServicesError } = useServices(salonId ? Number(salonId) : null);
+
   useEffect(() => {
-    const loadServices = () => {
-      const storageKey = salonId ? `services_salon_${salonId}` : 'services';
-      const savedServices = localStorage.getItem(storageKey);
-      
-      if (savedServices) {
-        try {
-          setServices(JSON.parse(savedServices));
-        } catch (e) {
-          console.error('Failed to parse services:', e);
-          setDefaultServices();
-        }
-      } else {
-        setDefaultServices();
+    const mapApiServices = () => {
+      if (apiServices && apiServices.length > 0) {
+        const mapped: Service[] = apiServices.map(s => ({
+          id: s.id,
+            name: s.name,
+            price: parseFloat(s.price),
+            duration: s.durationMin / 60
+        }));
+        setServices(mapped);
+        return true;
       }
+      return false;
     };
 
-    const setDefaultServices = () => {
+    const loadLocalFallback = () => {
+      const storageKey = salonId ? `services_salon_${salonId}` : 'services';
+      const savedServices = localStorage.getItem(storageKey);
+      if (savedServices) {
+        try {
+          const parsed: Service[] = JSON.parse(savedServices);
+          setServices(parsed);
+          return;
+        } catch (e) {
+          console.error('Failed to parse services from localStorage', e);
+        }
+      }
       const defaultServices: Service[] = [
         { name: 'Herreklip', price: 249, duration: 0.5 },
         { name: 'Dameklip', price: 349, duration: 1 },
@@ -917,24 +931,19 @@ const BookingsTimeline: React.FC<BookingsTimelineProps> = ({ onRevenueUpdate, sa
         { name: 'Hårfarvning', price: 599, duration: 2 }
       ];
       setServices(defaultServices);
-      
-      // Save default services if none exist
-      if (salonId) {
-        const storageKey = `services_salon_${salonId}`;
-        localStorage.setItem(storageKey, JSON.stringify(defaultServices));
+    };
+
+    // Forsøg API først hvis salonId findes
+    if (salonId) {
+      if (!mapApiServices() && apiServicesError) {
+        // Kun fallback hvis fejl foreligger og ingen data
+        loadLocalFallback();
       }
-    };
-
-    loadServices();
-
-    // Listen for service updates
-    const handleServiceUpdate = () => loadServices();
-    window.addEventListener('servicesUpdated', handleServiceUpdate);
-
-    return () => {
-      window.removeEventListener('servicesUpdated', handleServiceUpdate);
-    };
-  }, [salonId]);
+    } else {
+      // Ikke salon-specifik -> brug local / default
+      loadLocalFallback();
+    }
+  }, [apiServices, apiServicesError, salonId]);
   
   // Generate time slots every 30 minutes from 8:00 to 18:00
   const timeSlots = [];

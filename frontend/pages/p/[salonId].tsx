@@ -1,22 +1,81 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
-import { loadPublicPageConfig } from '../../utils/publicPageConfig';
+
+interface PublicConfigPayload {
+  id: number;
+  name: string;
+  address: string;
+  type: string;
+  publicConfig: any | null;
+  services: { id: number; name: string; durationMin: number; price: string; active?: boolean }[];
+}
+
+function defaultConfig(): any {
+  return {
+    title: 'Velkommen til vores online booking',
+    subtitle: 'Professionel behandling – nemt at booke',
+    introText: 'Her kan du trygt booke din næste tid. Vi glæder os til at tage imod dig og give dig en god oplevelse.',
+    highlightPoints: ['Erfarne behandlere','Nem online booking','Kvalitet & tryghed'],
+    termsTitle: 'Generelle vilkår',
+    termsBody: 'Afbud skal ske senest 4 timer før din aftale. Udeblivelser eller for sent afbud kan medføre gebyr svarende til 50% af behandlingens pris.',
+    cancellationTitle: 'Afbuds- og ændringspolitik',
+    cancellationBody: 'Du kan nemt aflyse eller ændre din tid via bekræftelsesmail eller ved at kontakte os. Senere end 4 timer før – kontakt os direkte.',
+    footerNote: 'Tak fordi du vælger os – vi glæder os til at se dig! ✂️',
+    primaryColor: '#111827',
+    accentColor: '#6366f1',
+    ctaEnabled: true,
+    ctaText: 'Book tid',
+    ctaLink: '#',
+    updatedAt: new Date().toISOString()
+  };
+}
 
 export default function PublicSalonLanding() {
   const router = useRouter();
   const { salonId } = router.query;
-  const [config, setConfig] = useState(() => loadPublicPageConfig((salonId as string) || undefined));
+  const [config, setConfig] = useState<any>(defaultConfig());
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const isClient = typeof window !== 'undefined';
 
   useEffect(() => {
-    if (salonId) {
-      setConfig(loadPublicPageConfig(salonId as string));
+    if (!salonId) return;
+    const controller = new AbortController();
+    async function load() {
+      try {
+        setLoading(true);
+        setError(null);
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'}/public/salons/${salonId}`, { signal: controller.signal });
+        if (!res.ok) throw new Error('Kunne ikke hente offentlig side');
+        const data: PublicConfigPayload = await res.json();
+        const cfg = { ...defaultConfig(), ...(data.publicConfig || {}) };
+        setConfig(cfg);
+      } catch (e: any) {
+        if (e.name !== 'AbortError') {
+          setError(e.message);
+        }
+      } finally {
+        setLoading(false);
+      }
     }
+    load();
+    return () => controller.abort();
   }, [salonId]);
 
   const primary = config.primaryColor || '#111827';
   const accent = config.accentColor || '#6366f1';
   const hasCover = !!config.coverImageUrl;
+
+  if (loading) {
+    return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', fontFamily: 'system-ui, sans-serif' }}>Indlæser...</div>;
+  }
+  if (error) {
+    return <div style={{ maxWidth: 600, margin: '100px auto', fontFamily: 'system-ui, sans-serif', textAlign: 'center', padding: 32, background: '#fff', borderRadius: 16, boxShadow: '0 4px 18px -4px rgba(0,0,0,0.08)' }}>
+      <h1 style={{ fontSize: 24, marginBottom: 12 }}>Siden kunne ikke indlæses</h1>
+      <div style={{ color: '#555', marginBottom: 20 }}>{error}</div>
+      <button onClick={() => router.reload()} style={{ background: '#111827', color: '#fff', border: 'none', padding: '10px 22px', borderRadius: 8, cursor: 'pointer' }}>Prøv igen</button>
+    </div>;
+  }
 
   return (
     <div style={{ fontFamily: 'system-ui, sans-serif', background: '#f1f3f7', minHeight: '100vh', paddingBottom: 60 }}>
@@ -64,7 +123,7 @@ export default function PublicSalonLanding() {
           <p style={{ fontSize: 19, lineHeight: 1.55, margin: 0 }}>{config.introText}</p>
           {config.highlightPoints.length > 0 && (
             <ul style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px,1fr))', gap: 16, listStyle: 'none', padding: 0, marginTop: 36 }}>
-              {config.highlightPoints.map((p,i) => (
+              {config.highlightPoints.map((p: string, i: number) => (
                 <li key={i} style={{ background: accent + '15', padding: '16px 18px', borderRadius: 14, fontWeight: 500, fontSize: 15, color: primary }}>{p}</li>
               ))}
             </ul>

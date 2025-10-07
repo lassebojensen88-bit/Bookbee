@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import ClientLayout from '../../../components/ClientLayout';
 import { SalonIcon, UserIcon } from '../../../components/icons';
+import { listServices, createService, updateService, deleteService } from '../../../utils/api';
 
 interface Service {
   id: number;
@@ -17,6 +18,9 @@ export default function Services() {
   const { salonId } = router.query as { salonId: string };
   
   const [services, setServices] = useState<Service[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [apiError, setApiError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingService, setEditingService] = useState<Service | null>(null);
@@ -30,9 +34,33 @@ export default function Services() {
 
   // Load services from localStorage on component mount
   useEffect(() => {
-    if (salonId) {
-      loadServices();
-    }
+    if (!salonId) return;
+    let cancelled = false;
+    const init = async () => {
+      setLoading(true);
+      setApiError(null);
+      try {
+        const api = await listServices(Number(salonId));
+        if (cancelled) return;
+        // Map API service -> UI service
+        const mapped: Service[] = api.map(s => ({
+          id: s.id,
+          name: s.name,
+          price: parseFloat(s.price),
+          duration: s.durationMin / 60,
+          description: s.description || undefined
+        }));
+        setServices(mapped);
+      } catch (e: any) {
+        // Fallback to localStorage approach
+        setApiError(e?.message || 'Kunne ikke hente services fra API – viser lokal data');
+        loadServices();
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    init();
+    return () => { cancelled = true; };
   }, [salonId]);
 
   const loadServices = () => {
@@ -72,30 +100,52 @@ export default function Services() {
     window.dispatchEvent(new Event('servicesUpdated'));
   };
 
-  const handleAddService = (e: React.FormEvent) => {
+  const handleAddService = async (e: React.FormEvent) => {
     e.preventDefault();
-    
     if (!newService.name.trim() || !newService.price || !newService.duration) {
       alert('Navn, pris og varighed er påkrævet');
       return;
     }
-
-    const service: Service = {
+    const durationHours = parseFloat(newService.duration);
+    const priceNumber = parseFloat(newService.price);
+    const optimistic: Service = {
       id: Date.now(),
       name: newService.name.trim(),
-      price: parseFloat(newService.price),
-      duration: parseFloat(newService.duration),
+      price: priceNumber,
+      duration: durationHours,
       category: newService.category.trim() || undefined,
       description: newService.description.trim() || undefined
     };
-
-    const updatedServices = [...services, service];
-    setServices(updatedServices);
-    saveServices(updatedServices);
-    
-    // Reset form
-    setNewService({ name: '', price: '', duration: '', category: '', description: '' });
-    setShowAddModal(false);
+    setServices(prev => [...prev, optimistic]);
+    setSaving(true);
+    try {
+      if (salonId) {
+        const created = await createService(Number(salonId), {
+          name: optimistic.name,
+          description: optimistic.description,
+          durationMin: Math.round(durationHours * 60),
+          price: priceNumber.toFixed(2)
+        });
+        // Replace optimistic with actual (id, canonical values)
+        setServices(prev => prev.map(s => s.id === optimistic.id ? {
+          id: created.id,
+          name: created.name,
+          price: parseFloat(created.price),
+          duration: created.durationMin / 60,
+          description: created.description || undefined
+        } : s));
+      } else {
+        saveServices([...services, optimistic]);
+      }
+      setShowAddModal(false);
+      setNewService({ name: '', price: '', duration: '', category: '', description: '' });
+    } catch (err: any) {
+      alert('Kunne ikke oprette service: ' + (err.message || 'Ukendt fejl'));
+      // Rollback optimistic
+      setServices(prev => prev.filter(s => s.id !== optimistic.id));
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleEditService = (service: Service) => {
@@ -110,40 +160,63 @@ export default function Services() {
     setShowEditModal(true);
   };
 
-  const handleUpdateService = (e: React.FormEvent) => {
+  const handleUpdateService = async (e: React.FormEvent) => {
     e.preventDefault();
-    
     if (!editingService || !newService.name.trim() || !newService.price || !newService.duration) {
       alert('Navn, pris og varighed er påkrævet');
       return;
     }
-
-    const updatedService: Service = {
+    const priceNumber = parseFloat(newService.price);
+    const durationHours = parseFloat(newService.duration);
+    const original = editingService;
+    const updated: Service = {
       ...editingService,
       name: newService.name.trim(),
-      price: parseFloat(newService.price),
-      duration: parseFloat(newService.duration),
+      price: priceNumber,
+      duration: durationHours,
       category: newService.category.trim() || undefined,
       description: newService.description.trim() || undefined
     };
-
-    const updatedServices = services.map(s => s.id === editingService.id ? updatedService : s);
-    setServices(updatedServices);
-    saveServices(updatedServices);
-    
-    // Reset form
-    setNewService({ name: '', price: '', duration: '', category: '', description: '' });
-    setShowEditModal(false);
-    setEditingService(null);
+    setServices(prev => prev.map(s => s.id === original.id ? updated : s));
+    setSaving(true);
+    try {
+      if (salonId && original.id) {
+        await updateService(original.id, {
+          name: updated.name,
+          description: updated.description,
+          durationMin: Math.round(updated.duration * 60),
+          price: priceNumber.toFixed(2)
+        });
+      } else {
+        saveServices(services.map(s => s.id === original.id ? updated : s));
+      }
+      setShowEditModal(false);
+      setEditingService(null);
+      setNewService({ name: '', price: '', duration: '', category: '', description: '' });
+    } catch (err: any) {
+      alert('Kunne ikke opdatere service: ' + (err.message || 'Ukendt fejl'));
+      // Rollback
+      setServices(prev => prev.map(s => s.id === original.id ? original : s));
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const handleDeleteService = (service: Service) => {
+  const handleDeleteService = async (service: Service) => {
     const confirmDelete = window.confirm(`Er du sikker på at du vil slette "${service.name}"?\n\nDenne handling kan ikke fortrydes.`);
-    
-    if (confirmDelete) {
-      const updatedServices = services.filter(s => s.id !== service.id);
-      setServices(updatedServices);
-      saveServices(updatedServices);
+    if (!confirmDelete) return;
+    const prev = services;
+    setServices(prev.filter(s => s.id !== service.id));
+    try {
+      if (salonId && service.id) {
+        await deleteService(service.id);
+      } else {
+        saveServices(prev.filter(s => s.id !== service.id));
+      }
+    } catch (err: any) {
+      alert('Kunne ikke slette service: ' + (err.message || 'Ukendt fejl'));
+      // rollback
+      setServices(prev);
     }
   };
 
@@ -285,6 +358,14 @@ export default function Services() {
           boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
           overflow: 'hidden'
         }}>
+          {apiError && (
+            <div style={{ background: '#fef2f2', color: '#991b1b', padding: '12px 20px', borderBottom: '1px solid #fecaca', fontSize: 14 }}>
+              {apiError}
+            </div>
+          )}
+          {loading && services.length === 0 && (
+            <div style={{ padding: '32px 24px', fontSize: 14, color: '#6b7280' }}>Henter services...</div>
+          )}
           {Object.entries(groupedServices).map(([category, categoryServices]) => (
             <div key={category}>
               <div style={{
@@ -319,8 +400,8 @@ export default function Services() {
                   </div>
                   
                   <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                    <div style={{ fontSize: 20, fontWeight: 700, color: '#059669' }}>
-                      {service.price} kr
+                    <div style={{ fontSize: 20, fontWeight: 700, color: '#059669' }} title="Pris">
+                      {service.price.toFixed ? service.price.toFixed(0) : service.price} kr
                     </div>
                     
                     <button
