@@ -1,0 +1,42 @@
+[
+  {
+    "name": "BeeBob",
+    "owner": "Jonna",
+    "address": "Søndergade",
+    "email": "info@beebob.dk",
+    "type": "Frisør",
+    "paid": false,
+    "id": 1,
+    "createdAt": "2025-10-07T16:24:03.426Z"
+  },
+  {
+    "name": "Test",
+    "owner": "test",
+    "address": "test",
+    "email": "test",
+    "type": "Spa",
+    "paid": false,
+    "id": 2,
+    "createdAt": "2025-10-07T16:25:00.714Z"
+  },
+  {
+    "name": "et",
+    "owner": "ete",
+    "address": "etet",
+    "email": "ea",
+    "type": "Skønhedsklinik",
+    "paid": false,
+    "id": 3,
+    "createdAt": "2025-10-07T16:30:27.358Z"
+  },
+  {
+    "name": "Ny ",
+    "owner": "NY",
+    "address": "nY ",
+    "email": "ny",
+    "type": "Skønhedsklinik",
+    "paid": false,
+    "id": 4,
+    "createdAt": "2025-10-07T18:47:30.957Z"
+  }
+]
