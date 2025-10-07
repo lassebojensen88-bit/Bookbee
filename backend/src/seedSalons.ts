@@ -14,6 +14,7 @@ async function main() {
       owner: 'Benny Bob',
       email: 'beebob@salon.dk',
       address: 'Hovedgade 1, 1234 Byen',
+      type: 'frisør'
     },
   });
 
@@ -27,6 +28,7 @@ async function main() {
       owner: 'Linda L',
       email: 'hairbyl@salon.dk',
       address: 'Strøget 2, 5678 Byen',
+      type: 'frisør'
     },
   });
 

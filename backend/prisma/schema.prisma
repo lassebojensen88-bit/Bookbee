@@ -5,8 +5,8 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = "file:./dev.db"
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 model Admin {
@@ -15,15 +15,58 @@ model Admin {
   email     String   @unique
   password  String
   createdAt DateTime @default(now())
+  salons    Salon[]
 }
 
 model Salon {
-  id        Int      @id @default(autoincrement())
-  name      String
-  owner     String
-  email     String   @unique
-  address   String
-  type      String
-  paid      Boolean  @default(false)
-  createdAt DateTime @default(now())
+  id            Int       @id @default(autoincrement())
+  name          String
+  owner         String
+  email         String    @unique
+  address       String
+  type          String
+  paid          Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  adminId       Int?
+  admin         Admin?    @relation(fields: [adminId], references: [id])
+  services      Service[]
+  bookings      Booking[]
+  publicConfig  Json?     // Gemmer branding + CTA konfiguration
+}
+
+model Service {
+  id          Int       @id @default(autoincrement())
+  salonId     Int
+  salon       Salon     @relation(fields: [salonId], references: [id])
+  name        String
+  description String?
+  durationMin Int       // varighed i minutter
+  price       Decimal   // Pris i kroner (brug Decimal for nøjagtighed)
+  active      Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  bookings    Booking[]
+}
+
+model Booking {
+  id          Int       @id @default(autoincrement())
+  salonId     Int
+  salon       Salon     @relation(fields: [salonId], references: [id])
+  serviceId   Int
+  service     Service   @relation(fields: [serviceId], references: [id])
+  customerName  String
+  customerEmail String?
+  startsAt     DateTime
+  endsAt       DateTime
+  notes        String?
+  status       BookingStatus @default(SCHEDULED)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+}
+
+enum BookingStatus {
+  SCHEDULED
+  COMPLETED
+  CANCELLED
+  NO_SHOW
 }
