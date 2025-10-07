@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client';
+// Seed script: Kører sikre upserts til basis salon data i prod/stage
 
 const prisma = new PrismaClient();
 
