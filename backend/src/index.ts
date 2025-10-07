@@ -5,7 +5,21 @@ import prisma from './prismaClient';
 
 const app = express();
 
-app.use(cors({ origin: [/^http:\/\/localhost:\d+$/] }));
+// Dynamisk CORS: Lokalt + (kommasepareret) ALLOWED_ORIGINS fra env
+const localPattern = /^http:\/\/localhost:\d+$/;
+const allowedOrigins = (process.env.ALLOWED_ORIGINS || '')
+  .split(',')
+  .map(s => s.trim())
+  .filter(Boolean);
+
+app.use(cors({
+  origin: (origin, cb) => {
+    if (!origin) return cb(null, true); // mobile apps / curl
+    if (localPattern.test(origin)) return cb(null, true);
+    if (allowedOrigins.includes(origin)) return cb(null, true);
+    return cb(new Error('CORS blocked: ' + origin));
+  }
+}));
 app.use(express.json());
 
 app.get('/', (req: Request, res: Response) => {
