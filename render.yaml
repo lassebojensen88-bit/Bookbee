@@ -1,0 +1,22 @@
+# Render Blueprint for Bookbee backend
+# Dokumentation: https://render.com/docs/infrastructure-as-code
+
+services:
+  - type: web
+    name: bookbee-backend
+    env: node
+    plan: free
+    rootDir: backend
+    buildCommand: npm install && npm run build
+    startCommand: npx prisma migrate deploy && node dist/index.js
+    autoDeploy: true
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: 20
+      - key: PORT
+        value: 4000
+      - key: ALLOWED_ORIGINS
+        value: http://localhost:3000
+      - key: DATABASE_URL
+        sync: false  # Sættes manuelt i Render dashboardet (Supabase connection string)

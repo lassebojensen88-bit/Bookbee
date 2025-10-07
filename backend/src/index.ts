@@ -26,6 +26,11 @@ app.get('/', (req: Request, res: Response) => {
   res.send('Admin Backend API is running');
 });
 
+// Simpel health endpoint til platform health checks
+app.get('/health', (_req: Request, res: Response) => {
+  res.json({ status: 'ok' });
+});
+
 // Admin endpoints
 // Dummy admin endpoint (empty array)
 app.get('/admins', (req: Request, res: Response) => {
