@@ -1,4 +1,13 @@
 import express, { Request, Response } from 'express';
+// Debug: log limited DB URL info if present (kan fjernes senere)
+try {
+  const raw = process.env.DATABASE_URL || '';
+  const masked = raw ? raw.replace(/(:\/\/[^:]+:)([^@]+)(@.*)/, '$1****$3') : '(empty)';
+  console.log('[BOOT] CWD=', process.cwd());
+  console.log('[BOOT] DATABASE_URL len=', raw.length, 'preview=', masked.slice(0, 60));
+} catch (e) {
+  console.log('[BOOT] debug error', e);
+}
 import cors from 'cors';
 // import { JsonStorage } from './storage'; // Midlertidig: erstattes af Prisma
 import prisma from './prismaClient';
