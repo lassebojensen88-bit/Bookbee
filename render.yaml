@@ -20,7 +20,7 @@ services:
       - key: PORT
         value: 4000
       - key: ALLOWED_ORIGINS
-        value: http://localhost:3000
+        value: http://localhost:3000,https://bookbee-flame.vercel.app
       - key: DATABASE_URL
         sync: false  # Pooled connection (port 6543) - bruges til runtime
       - key: DIRECT_URL
