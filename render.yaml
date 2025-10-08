@@ -29,3 +29,5 @@ services:
         sync: false  # Sættes manuelt i Render dashboardet (Supabase connection string)
       - key: DATABASE_URL_POOLED
         sync: false  # (Valgfri) Supabase pgBouncer pooled connection string – kan bruges i stedet for DATABASE_URL hvis direkte host fejler
+      - key: DIRECT_URL
+        sync: false  # Direkte (5432) forbindelse til migrering, hvis DATABASE_URL er sat til pooled (6543)
