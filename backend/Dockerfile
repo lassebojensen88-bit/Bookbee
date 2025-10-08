@@ -31,5 +31,6 @@ EXPOSE 4000
 # Default env hint
 ENV PORT=4000
 # Healthcheck (optional simple TCP) can be added by platform
-# Start command performs migrate deploy then launches server
-CMD ["sh","-c","npx prisma migrate deploy && node dist/index.js"]
+# Start command launches server directly without migration
+# Schema operations should be run locally before deployment using: npm run deploy:schema
+CMD ["node","dist/index.js"]

@@ -8,10 +8,10 @@ services:
     plan: free
     rootDir: backend
     buildCommand: npm install && npm run build
-    # Midlertidig debug startCommand: printer DB længde, forsøger migrate status først.
-    # Når alt virker: skift tilbage til: npx prisma migrate deploy && node dist/index.js
+    # Schema operationer køres nu lokalt - serveren starter direkte uden migration
+    # For at deploye schema: kør lokalt `npm run deploy:schema` før deployment
     startCommand: >-
-      sh -c 'echo Starting backend with migration; echo DBLEN=$(echo -n "$DATABASE_URL" | wc -c); timeout 30s npx prisma migrate deploy && echo MIGRATE_DONE || echo "WARN: migrate timeout/fail"; node dist/index.js'
+      sh -c 'echo Starting backend without migration; echo DBLEN=$(echo -n "$DATABASE_URL" | wc -c); node dist/index.js'
     autoDeploy: true
     healthCheckPath: /health
     envVars:
@@ -22,8 +22,6 @@ services:
       - key: ALLOWED_ORIGINS
         value: http://localhost:3000
       - key: DATABASE_URL
-        sync: false  # Sættes manuelt i Render dashboardet (Supabase connection string)
-      - key: DATABASE_URL_POOLED
-        sync: false  # (Valgfri) Supabase pgBouncer pooled connection string – kan bruges i stedet for DATABASE_URL hvis direkte host fejler
+        sync: false  # Pooled connection (port 6543) - bruges til runtime
       - key: DIRECT_URL
-        sync: false  # Direkte (5432) forbindelse til migrering, hvis DATABASE_URL er sat til pooled (6543)
+        sync: false  # Direct connection (port 5432) - bruges til migrations (kun lokalt)
