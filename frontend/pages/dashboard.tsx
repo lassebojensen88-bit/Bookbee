@@ -53,7 +53,7 @@ export default function Dashboard() {
     uniqueOwners: 0
   });
   const [typeStats, setTypeStats] = useState<Array<{ type: string; count: number }>>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(false); // Removed loading states for better UX
 
   useEffect(() => {
     listSalons()
