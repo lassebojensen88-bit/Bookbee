@@ -8,13 +8,15 @@
     "migrate:deploy": "prisma migrate deploy",
     "postinstall": "prisma generate",
     "start": "node dist/index.js",
-    "test:db": "ts-node-dev src/checkDb.ts"
+    "test:db": "ts-node-dev src/checkDb.ts",
+    "test:pg": "ts-node-dev src/checkPgDirect.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.16.3",
     "@types/cors": "^2.8.19",
     "cors": "^2.8.5",
     "express": "^4.18.2",
+    "pg": "^8.16.3",
     "prisma": "^6.16.3"
   },
   "devDependencies": {
