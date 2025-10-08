@@ -3,23 +3,12 @@ import React, { useEffect, useState } from 'react';
 import { DashboardIcon, SalonIcon, ScissorsIcon, ToothIcon, FaceIcon } from '../components/icons';
 import { listSalons } from '../utils/api';
 
-// Animation keyframes
-const fadeInAnimation = `
-  @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-  @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-  }
-`;
+// No animations - show content immediately
+const fadeInAnimation = ``;
 
-// Add styles to head
+// Remove animation styles
 if (typeof window !== 'undefined') {
-  const style = document.createElement('style');
-  style.textContent = fadeInAnimation;
-  document.head.appendChild(style);
+  // No need to add animation styles
 }
 
 function MoneyIcon(props: React.SVGProps<SVGSVGElement>) {
@@ -53,7 +42,6 @@ export default function Dashboard() {
     uniqueOwners: 0
   });
   const [typeStats, setTypeStats] = useState<Array<{ type: string; count: number }>>([]);
-  const [loading, setLoading] = useState(false); // Removed loading states for better UX
 
   useEffect(() => {
     listSalons()
@@ -104,9 +92,6 @@ export default function Dashboard() {
           uniqueOwners: 0
         });
         setTypeStats([]);
-      })
-      .finally(() => {
-        setLoading(false);
       });
   }, []);
   // Vælg ikon ud fra kundetype
@@ -176,8 +161,7 @@ export default function Dashboard() {
       <h1 style={{ 
         fontSize: 32, 
         fontWeight: 700, 
-        marginBottom: 32,
-        animation: 'fadeIn 0.5s ease-out forwards'
+        marginBottom: 32
       }}>Dashboard</h1>
       
       {/* Kundetyper sektion */}
@@ -196,9 +180,7 @@ export default function Dashboard() {
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'flex-start',
-            minHeight: 100,
-            opacity: 0,
-            animation: `fadeIn 0.5s ease-out ${typeStats.indexOf(t) * 0.1}s forwards`
+            minHeight: 100
           }}>
             <div style={{ marginBottom: 10 }}>{getTypeIcon(t.type)}</div>
             <div style={{ fontSize: 20, fontWeight: 700 }}>{t.type.charAt(0).toUpperCase() + t.type.slice(1)}</div>
@@ -223,9 +205,7 @@ export default function Dashboard() {
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'flex-start',
-            minHeight: 120,
-            opacity: 0,
-            animation: `fadeIn 0.5s ease-out ${(typeStats.length * 0.1) + (cards.indexOf(card) * 0.1)}s forwards`
+            minHeight: 120
           }}>
             <div style={{ marginBottom: 16 }}>{card.icon}</div>
             <div style={{ fontSize: 32, fontWeight: 700 }}>{card.value}</div>
@@ -246,9 +226,7 @@ export default function Dashboard() {
           boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
           padding: 32,
           maxWidth: 420,
-          minWidth: 320,
-          opacity: 0,
-          animation: `fadeIn 0.5s ease-out ${(typeStats.length * 0.1) + (cards.length * 0.1)}s forwards`
+          minWidth: 320
         }}>
           <h2 style={{ fontSize: 22, fontWeight: 600, marginBottom: 18, textAlign: 'center' }}>Betalingsstatus</h2>
           <div style={{ textAlign: 'center', fontSize: 18, marginTop: 20 }}>
