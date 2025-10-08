@@ -11,7 +11,7 @@ services:
     # Midlertidig debug startCommand: printer DB længde, forsøger migrate status først.
     # Når alt virker: skift tilbage til: npx prisma migrate deploy && node dist/index.js
     startCommand: >-
-      sh -c 'echo Using pooled DB (db push); echo DBLEN=$(echo -n "$DATABASE_URL" | wc -c); npx prisma db push || echo "(warning) db push failed - continuing"; node dist/index.js'
+      sh -c 'echo Starting backend; echo DBLEN=$(echo -n "$DATABASE_URL" | wc -c); if [ -n "$DIRECT_URL" ]; then echo "Attempt migrate deploy (DIRECT_URL)"; npx prisma migrate deploy || echo "(warn) migrate failed"; else echo "No DIRECT_URL set, using db push"; npx prisma db push || echo "(warn) db push failed"; fi; node dist/index.js'
     autoDeploy: true
     healthCheckPath: /health
     envVars:
