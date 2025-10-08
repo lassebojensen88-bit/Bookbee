@@ -83,7 +83,7 @@ export default function Login() {
                 style={{ width: 220, marginBottom: 0, padding: 10, borderRadius: 6, border: '1px solid #ccc', fontSize: 16, display: 'block', boxSizing: 'border-box' }} />
               <button type="submit" style={{ marginTop: 16, background: '#222', color: '#fff', border: 'none', borderRadius: 6, padding: '12px 0', fontWeight: 600, fontSize: 17, cursor: 'pointer', width: 220, display: 'block' }}>Log ind</button>
             </div>
-      {/* Powered by BookR flyttes til baggrundskomponenten i _app.tsx */}
+      {/* Powered by bookbee flyttes til baggrundskomponenten i _app.tsx */}
         <div style={{ textAlign: 'center', marginTop: 10 }}>
           <span style={{ color: '#222', opacity: 0.6, fontSize: 15, fontWeight: 400, letterSpacing: 0.1, width: '100%' }}>Glemt kode?</span>
         </div>

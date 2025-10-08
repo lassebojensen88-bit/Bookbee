@@ -59,7 +59,7 @@ export default function ClientSidebar({ salonId }: ClientSidebarProps) {
       boxSizing: 'border-box',
     }}>
       <div style={{ fontWeight: 700, fontSize: 24, marginBottom: 40, textAlign: 'center', letterSpacing: 1 }}>
-        BookR Portal
+        bookbee Portal
       </div>
       <nav style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 16, alignItems: 'center' }}>
         {navItems.map((item) => {

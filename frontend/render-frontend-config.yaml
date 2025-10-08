@@ -1,0 +1,11 @@
+# Add this to your render.yaml for frontend deployment on Render
+  - type: web
+    name: bookbee-frontend
+    env: static
+    plan: free
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    staticPublishPath: .next
+    envVars:
+      - key: NEXT_PUBLIC_API_URL
+        value: https://bookbee-backend-excw.onrender.com
