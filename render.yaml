@@ -8,7 +8,14 @@ services:
     plan: free
     rootDir: backend
     buildCommand: npm install && npm run build
-    startCommand: npx prisma migrate deploy && node dist/index.js
+    # Midlertidig debug startCommand: printer DB længde, forsøger migrate status først.
+    # Når alt virker: skift tilbage til: npx prisma migrate deploy && node dist/index.js
+    startCommand: >-
+      sh -c 'echo DBLEN=$(echo -n "$DATABASE_URL" | wc -c) &&
+      echo HOST=$(echo "$DATABASE_URL" | sed -E "s#.*@([^:/]+).*#\1#") &&
+      npx prisma migrate status || echo MIGRATE_STATUS_FAIL=$? &&
+      npx prisma migrate deploy || echo MIGRATE_DEPLOY_FAIL=$? &&
+      node dist/index.js'
     autoDeploy: true
     healthCheckPath: /health
     envVars:
@@ -20,3 +27,5 @@ services:
         value: http://localhost:3000
       - key: DATABASE_URL
         sync: false  # Sættes manuelt i Render dashboardet (Supabase connection string)
+      - key: DATABASE_URL_POOLED
+        sync: false  # (Valgfri) Supabase pgBouncer pooled connection string – kan bruges i stedet for DATABASE_URL hvis direkte host fejler
