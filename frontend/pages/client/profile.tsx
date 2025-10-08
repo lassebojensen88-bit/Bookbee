@@ -92,18 +92,13 @@ export default function ClientProfile({ salonId }: ClientProfileProps) {
     e.preventDefault();
     
     // Update profile via backend API
-    fetch(`http://localhost:4000/salons/${profile.id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        name: form.salonName,
-        owner: form.ownerName,
-        email: form.email,
-        address: form.address,
-        type: form.type
-      })
+    updateSalon(profile.id, {
+      name: form.salonName,
+      owner: form.ownerName,
+      email: form.email,
+      address: form.address,
+      type: form.type
     })
-    .then(res => res.json())
     .then(updatedSalon => {
       // Update the global profile context
       updateProfile({
