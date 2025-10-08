@@ -7,7 +7,7 @@ interface Profile {
   email: string;
   address: string;
   type: string;
-  clientCount: number;
+  appointmentCount: number; // Changed from clientCount to appointmentCount
 }
 
 interface ProfileContextType {
@@ -15,7 +15,7 @@ interface ProfileContextType {
   loading: boolean;
   refreshProfile: () => void;
   updateProfile: (newProfile: Partial<Profile>) => void;
-  updateClientCount: () => void;
+  updateAppointmentCount: () => void; // Changed from updateClientCount
 }
 
 const ProfileContext = createContext<ProfileContextType | undefined>(undefined);
@@ -41,77 +41,81 @@ export const ProfileProvider: React.FC<ProfileProviderProps> = ({ children, salo
     email: '',
     address: '',
     type: '',
-    clientCount: 0,
+    appointmentCount: 0,
   });
   const [loading, setLoading] = useState(true);
 
   const loadProfile = async () => {
     try {
       setLoading(true);
-      const response = await fetch('http://localhost:4000/salons');
+      
+      // Use the same API base as the utils/api.ts file
+      const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://bookbee-backend-excw.onrender.com';
+      console.log('🔍 Loading profile for salonId:', salonId, 'from API:', API_BASE);
+      
+      const response = await fetch(`${API_BASE}/salons`);
+      
+      if (!response.ok) {
+        throw new Error(`API responded with ${response.status}: ${response.statusText}`);
+      }
+      
       const data = await response.json();
+      console.log('📋 All salons from API:', data);
       
       let salon;
       if (salonId) {
         // Find salon by ID
         salon = data.find((s: any) => s.id === parseInt(salonId));
+        console.log('🎯 Looking for salon ID:', parseInt(salonId), 'Found:', salon);
         if (!salon) {
-          throw new Error(`Salon with ID ${salonId} not found`);
+          throw new Error(`Salon with ID ${salonId} not found in API response`);
         }
       } else {
         // Fallback to first salon (for backward compatibility)
         salon = data[0];
+        console.log('🔄 Using first salon as fallback:', salon);
       }
       
       if (salon) {
-        setProfile({
+        console.log('✅ Loaded salon profile:', salon);
+        
+        // First set the profile data
+        const newProfile = {
           id: salon.id,
           salonName: salon.name,
           ownerName: salon.owner,
           email: salon.email,
           address: salon.address,
           type: salon.type,
-          clientCount: 0, // Will be calculated from bookings
-        });
-      } else {
-        // Create default salon if none exists
-        const defaultSalon = {
-          name: 'Random Hair Salon',
-          owner: 'Anna Demo',
-          email: 'anna@randomsalon.dk',
-          address: 'Hovedgaden 123, 2800 Kgs. Lyngby',
-          type: 'Frisør',
+          appointmentCount: 0, // Temporary, will be updated by calculateAndSetAppointmentCount
         };
         
-        const createResponse = await fetch('http://localhost:4000/salons', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(defaultSalon)
-        });
+        console.log('🏪 Setting profile to:', newProfile);
+        setProfile(newProfile);
         
-        const newSalon = await createResponse.json();
-        setProfile({
-          id: newSalon.id,
-          salonName: newSalon.name,
-          ownerName: newSalon.owner,
-          email: newSalon.email,
-          address: newSalon.address,
-          type: newSalon.type,
-          clientCount: 0,
-        });
+        // Then immediately calculate appointment count to avoid showing 0
+        setTimeout(() => {
+          calculateAndSetAppointmentCount();
+        }, 50);
+      } else {
+        throw new Error('No salons found in API response');
       }
     } catch (error) {
-      console.error('Failed to load profile:', error);
-      // Fallback to default values on error
-      setProfile({
-        id: 0,
-        salonName: 'Beauty Salon',
+      console.error('❌ Failed to load profile:', error);
+      
+      // More specific fallback based on salonId
+      const fallbackProfile = {
+        id: parseInt(salonId || '0'),
+        salonName: salonId ? `Salon ${salonId}` : 'Beauty Salon',
         ownerName: 'Anna Jensen',
         email: 'anna@beautysalon.dk',
         address: 'Hovedgaden 42, 2800 Kgs. Lyngby',
         type: 'Frisør',
-        clientCount: 0,
-      });
+        appointmentCount: 0,
+      };
+      
+      console.log('🚨 Using fallback profile:', fallbackProfile);
+      setProfile(fallbackProfile);
     } finally {
       setLoading(false);
     }
@@ -125,70 +129,82 @@ export const ProfileProvider: React.FC<ProfileProviderProps> = ({ children, salo
     setProfile(prev => ({ ...prev, ...newProfile }));
   };
 
-  // Calculate unique clients for the current month from salon-specific localStorage bookings
-  const updateClientCount = () => {
+  // Calculate total appointments for the current month from salon-specific localStorage bookings
+  const calculateAndSetAppointmentCount = () => {
     try {
       // Use salon-specific localStorage key
       const storageKey = salonId ? `allBookings_salon_${salonId}` : 'allBookings';
       const savedBookings = localStorage.getItem(storageKey);
-      if (!savedBookings) return;
+      if (!savedBookings) {
+        console.log('📊 No bookings found in localStorage');
+        return;
+      }
 
       const allBookingsData: Record<string, any[]> = JSON.parse(savedBookings);
       const currentMonth = new Date().getMonth();
       const currentYear = new Date().getFullYear();
       
-      const uniqueClients = new Set<string>();
-      const debugData: { date: string, name: string, phone: string }[] = [];
+      let totalAppointments = 0;
+      const debugData: { date: string, name: string, service: string }[] = [];
 
       Object.entries(allBookingsData).forEach(([dateStr, bookings]) => {
         const date = new Date(dateStr);
         if (date.getMonth() === currentMonth && date.getFullYear() === currentYear) {
           bookings.forEach((booking) => {
-            // Use phone number as unique identifier (same as clients page)
-            if (booking.phone) {
-              uniqueClients.add(booking.phone);
-              debugData.push({ date: dateStr, name: booking.name, phone: booking.phone });
-            }
+            totalAppointments++;
+            debugData.push({ date: dateStr, name: booking.name, service: booking.service });
           });
         }
       });
 
-      console.log('🔍 Monthly clients debug:', {
-        totalThisMonth: uniqueClients.size,
-        uniquePhones: Array.from(uniqueClients),
-        allBookingsThisMonth: debugData
+      console.log('🔍 Monthly appointments debug:', {
+        salonId,
+        storageKey,
+        totalAppointmentsThisMonth: totalAppointments,
+        allAppointmentsThisMonth: debugData
       });
 
-      const clientCount = uniqueClients.size;
-      setProfile(prev => ({ ...prev, clientCount }));
+      setProfile(prev => ({ ...prev, appointmentCount: totalAppointments }));
     } catch (error) {
-      console.error('Failed to calculate client count:', error);
+      console.error('Failed to calculate appointment count:', error);
     }
   };
 
+  const updateAppointmentCount = calculateAndSetAppointmentCount;
+
   useEffect(() => {
     loadProfile();
-    
-    // Calculate initial client count
-    setTimeout(() => updateClientCount(), 100);
+  }, [salonId]); // Re-run when salonId changes
+
+  // Separate effect for client count calculation
+  useEffect(() => {
+    // Wait a bit for profile to be set, then calculate appointment count
+    const timer = setTimeout(() => {
+      calculateAndSetAppointmentCount();
+    }, 200);
     
     // Listen for booking updates
-    const handleBookingUpdate = () => updateClientCount();
+    const handleBookingUpdate = () => {
+      console.log('📊 Booking update detected, recalculating appointment count...');
+      calculateAndSetAppointmentCount();
+    };
+    
     window.addEventListener('bookingsUpdated', handleBookingUpdate);
     window.addEventListener('storage', handleBookingUpdate);
     
     return () => {
+      clearTimeout(timer);
       window.removeEventListener('bookingsUpdated', handleBookingUpdate);
       window.removeEventListener('storage', handleBookingUpdate);
     };
-  }, [salonId]); // Re-run when salonId changes
+  }, [salonId, profile.id]); // Re-run when salonId or profile.id changes
 
   const value: ProfileContextType = {
     profile,
     loading,
     refreshProfile,
     updateProfile,
-    updateClientCount,
+    updateAppointmentCount,
   };
 
   return (

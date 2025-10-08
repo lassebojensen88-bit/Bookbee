@@ -1,6 +1,6 @@
 // Simple API helper layer. Later we can swap to SWR/React Query.
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://bookbee-backend-excw.onrender.com';
 
 export interface Salon {
   id: number;
@@ -61,8 +61,11 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 // Salons
 export const listSalons = () => request<Salon[]>(`/salons`);
 export const getSalon = async (id: number) => request<Salon>(`/salons/${id}`);
+export const createSalon = (data: Partial<Pick<Salon, 'name' | 'owner' | 'address' | 'email' | 'type' | 'paid'>>) =>
+  request<Salon>(`/salons`, { method: 'POST', body: JSON.stringify(data) });
 export const updateSalon = (id: number, data: Partial<Pick<Salon, 'name' | 'owner' | 'address' | 'email' | 'type' | 'paid' | 'publicConfig'>>) =>
   request<Salon>(`/salons/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
+export const deleteSalon = (id: number) => request<void>(`/salons/${id}`, { method: 'DELETE' });
 
 // Services
 export const listServices = (salonId: number) => request<Service[]>(`/salons/${salonId}/services`);

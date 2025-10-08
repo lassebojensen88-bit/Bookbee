@@ -45,7 +45,7 @@ export default function PublicSalonLanding() {
       try {
         setLoading(true);
         setError(null);
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'}/public/salons/${salonId}`, { signal: controller.signal });
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://bookbee-backend-excw.onrender.com'}/public/salons/${salonId}`, { signal: controller.signal });
         if (!res.ok) throw new Error('Kunne ikke hente offentlig side');
         const data: PublicConfigPayload = await res.json();
         const cfg = { ...defaultConfig(), ...(data.publicConfig || {}) };

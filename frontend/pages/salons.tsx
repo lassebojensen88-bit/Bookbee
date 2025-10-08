@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { SalonIcon, DashboardIcon, ScissorsIcon, ToothIcon, FaceIcon, PlusIcon } from '../components/icons';
+import { listSalons, updateSalon, createSalon, deleteSalon } from '../utils/api';
 
 type Salon = {
   id: number;
@@ -13,7 +14,7 @@ type Salon = {
 
 export default function Salons() {
   const [salons, setSalons] = useState<Salon[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showAdd, setShowAdd] = useState(false);
   const [newKunde, setNewKunde] = useState({ name: '', owner: '', address: '', email: '', type: '' });
@@ -29,24 +30,20 @@ export default function Salons() {
   async function handleEditSave(e: React.FormEvent, id: number) {
     e.preventDefault();
     setSalons(salons.map(s => s.id === id ? { ...s, ...editData } : s));
-    await fetch(`http://localhost:4000/salons/${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(editData)
-    });
+    await updateSalon(id, editData);
     setEditId(null);
   }
 
   const fetchSalons = () => {
-    fetch('http://localhost:4000/salons')
-      .then((res) => res.json())
+    listSalons()
       .then((data) => {
         setSalons(data);
-        setLoading(false);
       })
       .catch((err) => {
+        console.error('Failed to fetch salons:', err);
         setError('Failed to fetch salons');
-        setLoading(false);
+        // Set empty array so we can still add salons
+        setSalons([]);
       });
   };
 
@@ -56,44 +53,51 @@ export default function Salons() {
     fetchSalons();
   }, []);
 
-  useEffect(() => {
-    if (!loading && salons.length === 0) {
-      // Add a random hair salon
-      const demoSalon = {
-        name: 'Random Hair Salon',
-        owner: 'Anna Demo',
-        address: 'Hovedgaden 123, 2800 Kgs. Lyngby',
-        email: 'anna@randomsalon.dk',
-        type: 'Frisør',
-        paid: true
-      };
-      fetch('http://localhost:4000/salons', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(demoSalon)
-      }).then(() => fetchSalons());
-    }
-  }, [loading, salons.length]);
+  // Commented out automatic demo salon creation for now
+  // useEffect(() => {
+  //   if (!loading && salons.length === 0) {
+  //     // Add a random hair salon
+  //     const demoSalon = {
+  //       name: 'Random Hair Salon',
+  //       owner: 'Anna Demo',
+  //       address: 'Hovedgaden 123, 2800 Kgs. Lyngby',
+  //       email: 'anna@randomsalon.dk',
+  //       type: 'Frisør',
+  //       paid: true
+  //     };
+  //     createSalon(demoSalon).then(() => fetchSalons());
+  //   }
+  // }, [loading, salons.length]);
 
   const handleDelete = async (id: number) => {
     if (!window.confirm('Er du sikker på at du vil slette denne kunde?')) return;
-    await fetch(`http://localhost:4000/salons/${id}`, { method: 'DELETE' });
+    await deleteSalon(id);
     setSalons(salons.filter((s) => s.id !== id));
   };
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
-    const res = await fetch('http://localhost:4000/salons', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(newKunde)
-    });
-    if (res.ok) {
+    console.log('handleAdd function called');
+    console.log('Form data:', newKunde);
+    
+    // Validate all required fields
+    if (!newKunde.name || !newKunde.owner || !newKunde.address || !newKunde.email || !newKunde.type) {
+      alert('Alle felter skal udfyldes');
+      return;
+    }
+    
+    try {
+      console.log('Creating salon:', newKunde);
+      const createdSalon = await createSalon(newKunde);
+      console.log('Salon created:', createdSalon);
       setShowAdd(false);
-  setNewKunde({ name: '', owner: '', address: '', email: '', type: '' });
-      fetchSalons();
-    } else {
-      alert('Kunne ikke tilføje kunde');
+      setNewKunde({ name: '', owner: '', address: '', email: '', type: '' });
+      // Add the new salon to the list immediately
+      setSalons(prev => [...prev, createdSalon]);
+      alert('Kunde oprettet!');
+    } catch (error) {
+      console.error('Error creating salon:', error);
+      alert('Kunne ikke tilføje kunde: ' + (error as Error).message);
     }
   };
 
@@ -161,40 +165,45 @@ export default function Salons() {
             <option value="Tandlæge">Tandlæge</option>
             <option value="Spa">Spa</option>
           </select>
-          <button type="submit" style={{ background: '#6366f1', color: '#fff', border: 'none', borderRadius: 6, padding: '10px 24px', fontWeight: 600, fontSize: 16, cursor: 'pointer' }}>Opret</button>
+          <button 
+            type="submit" 
+            onClick={(e) => {
+              console.log('Opret button clicked!');
+              handleAdd(e);
+            }}
+            style={{ background: '#6366f1', color: '#fff', border: 'none', borderRadius: 6, padding: '10px 24px', fontWeight: 600, fontSize: 16, cursor: 'pointer' }}
+          >
+            Opret
+          </button>
         </form>
       )}
       {/* Moderne bokse for ejere */}
-      {!loading && !error && (
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-          gap: 24,
-          marginBottom: 36
-        }}>
-          {Object.entries(owners).map(([owner, salons]) => (
-            <div key={owner} style={{
-              background: '#f3f4f8',
-              borderRadius: 14,
-              boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
-              padding: 24,
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'flex-start',
-              minHeight: 100
-            }}>
-              <div style={{ marginBottom: 10 }}>{getOwnerIcon(owner, salons)}</div>
-              <div style={{ fontSize: 20, fontWeight: 700 }}>{owner}</div>
-              <div style={{ fontSize: 15, color: '#555', marginTop: 2 }}>{salons.length} salon(er)</div>
-            </div>
-          ))}
-        </div>
-      )}
-      {loading && <p>Indlæser...</p>}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+        gap: 24,
+        marginBottom: 36
+      }}>
+        {Object.entries(owners).map(([owner, salons]) => (
+          <div key={owner} style={{
+            background: '#f3f4f8',
+            borderRadius: 14,
+            boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
+            padding: 24,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'flex-start',
+            minHeight: 100
+          }}>
+            <div style={{ marginBottom: 10 }}>{getOwnerIcon(owner, salons)}</div>
+            <div style={{ fontSize: 20, fontWeight: 700 }}>{owner}</div>
+            <div style={{ fontSize: 15, color: '#555', marginTop: 2 }}>{salons.length} salon(er)</div>
+          </div>
+        ))}
+      </div>
       {error && <p style={{ color: 'red' }}>{error}</p>}
       {/* Eksisterende tabel */}
-      {!loading && !error && (
-        <div style={{ background: '#fff', borderRadius: 12, boxShadow: '0 2px 12px rgba(0,0,0,0.06)', padding: 32, minWidth: 600 }}>
+      <div style={{ background: '#fff', borderRadius: 12, boxShadow: '0 2px 12px rgba(0,0,0,0.06)', padding: 32, minWidth: 600 }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ background: '#f3f4f8' }}>
@@ -268,12 +277,9 @@ export default function Salons() {
                             onChange={async (e) => {
                               const newPaid = e.target.checked;
                               setSalons(salons.map(s => s.id === salon.id ? { ...s, paid: newPaid } : s));
-                              const res = await fetch(`http://localhost:4000/salons/${salon.id}/paid`, {
-                                method: 'PATCH',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ paid: newPaid })
-                              });
-                              if (!res.ok) {
+                              try {
+                                await updateSalon(salon.id, { paid: newPaid });
+                              } catch (error) {
                                 alert('Kunne ikke opdatere betalingsstatus');
                                 setSalons(salons.map(s => s.id === salon.id ? { ...s, paid: !newPaid } : s));
                               }
@@ -323,7 +329,6 @@ export default function Salons() {
             </tbody>
           </table>
         </div>
-      )}
     </div>
   );
 }

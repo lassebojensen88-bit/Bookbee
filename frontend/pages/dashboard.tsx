@@ -1,12 +1,17 @@
 
 import React, { useEffect, useState } from 'react';
 import { DashboardIcon, SalonIcon, ScissorsIcon, ToothIcon, FaceIcon } from '../components/icons';
+import { listSalons } from '../utils/api';
 
 // Animation keyframes
 const fadeInAnimation = `
   @keyframes fadeIn {
     from { opacity: 0; transform: translateY(10px); }
     to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
   }
 `;
 
@@ -48,11 +53,10 @@ export default function Dashboard() {
     uniqueOwners: 0
   });
   const [typeStats, setTypeStats] = useState<Array<{ type: string; count: number }>>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    fetch('http://localhost:4000/salons')
-      .then(res => res.json())
+    listSalons()
       .then(data => {
         const total = data.length;
         const paid = data.filter((k: any) => k.paid).length;
@@ -85,7 +89,23 @@ export default function Dashboard() {
         });
         const typeArr = Object.entries(typeMap).map(([type, count]) => ({ type, count }));
         setTypeStats(typeArr);
-
+      })
+      .catch(error => {
+        console.error('Failed to load salons:', error);
+        // Even if there's an error, show the dashboard with empty data
+        setStats({
+          total: 0,
+          paid: 0,
+          unpaid: 0,
+          income: 0,
+          percentPaid: 0,
+          newThisMonth: 0,
+          lastCreated: '',
+          uniqueOwners: 0
+        });
+        setTypeStats([]);
+      })
+      .finally(() => {
         setLoading(false);
       });
   }, []);
@@ -159,114 +179,88 @@ export default function Dashboard() {
         marginBottom: 32,
         animation: 'fadeIn 0.5s ease-out forwards'
       }}>Dashboard</h1>
-      {loading ? (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          width: '100vw',
-          height: '100vh',
-          backgroundColor: 'rgba(255, 255, 255, 0.8)',
-          backdropFilter: 'blur(8px)',
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          zIndex: 9999
-        }}>
-          <div style={{
-            width: '40px',
-            height: '40px',
-            border: '3px solid #f3f3f3',
-            borderTop: '3px solid #222',
-            borderRadius: '50%',
-            animation: 'spin 1s linear infinite'
-          }}></div>
-        </div>
-      ) : (
-        <>
-          {/* Kundetyper sektion */}
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-            gap: 24,
-            marginBottom: 32
-          }}>
-            {typeStats.map(t => (
-              <div key={t.type} style={{
-                background: '#f3f4f8',
-                borderRadius: 14,
-                boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
-                padding: 24,
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'flex-start',
-                minHeight: 100,
-                opacity: 0,
-                animation: `fadeIn 0.5s ease-out ${typeStats.indexOf(t) * 0.1}s forwards`
-              }}>
-                <div style={{ marginBottom: 10 }}>{getTypeIcon(t.type)}</div>
-                <div style={{ fontSize: 20, fontWeight: 700 }}>{t.type.charAt(0).toUpperCase() + t.type.slice(1)}</div>
-                <div style={{ fontSize: 15, color: '#555', marginTop: 2 }}>{t.count} kunde(r)</div>
-              </div>
-            ))}
-          </div>
-
-          {/* Statistik kort */}
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-            gap: 28,
-            marginBottom: 32
-          }}>
-            {cards.map(card => (
-              <div key={card.label} style={{
-                background: card.bg,
-                borderRadius: 16,
-                boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
-                padding: 28,
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'flex-start',
-                minHeight: 120,
-                opacity: 0,
-                animation: `fadeIn 0.5s ease-out ${(typeStats.length * 0.1) + (cards.indexOf(card) * 0.1)}s forwards`
-              }}>
-                <div style={{ marginBottom: 16 }}>{card.icon}</div>
-                <div style={{ fontSize: 32, fontWeight: 700 }}>{card.value}</div>
-                <div style={{ fontSize: 16, color: '#555', marginTop: 4 }}>{card.label}</div>
-              </div>
-            ))}
-          </div>
-
-          {/* Betalingsstatus */}
-          <div style={{
+      
+      {/* Kundetyper sektion */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+        gap: 24,
+        marginBottom: 32
+      }}>
+        {typeStats.map(t => (
+          <div key={t.type} style={{
+            background: '#f3f4f8',
+            borderRadius: 14,
+            boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
+            padding: 24,
             display: 'flex',
-            justifyContent: 'center',
-            marginBottom: 32
+            flexDirection: 'column',
+            alignItems: 'flex-start',
+            minHeight: 100,
+            opacity: 0,
+            animation: `fadeIn 0.5s ease-out ${typeStats.indexOf(t) * 0.1}s forwards`
           }}>
-            <div style={{
-              background: '#fff',
-              borderRadius: 16,
-              boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
-              padding: 32,
-              maxWidth: 420,
-              minWidth: 320,
-              opacity: 0,
-              animation: `fadeIn 0.5s ease-out ${(typeStats.length * 0.1) + (cards.length * 0.1)}s forwards`
-            }}>
-              <h2 style={{ fontSize: 22, fontWeight: 600, marginBottom: 18, textAlign: 'center' }}>Betalingsstatus</h2>
-              <div style={{ textAlign: 'center', fontSize: 18, marginTop: 20 }}>
-                <div style={{ marginBottom: 12 }}>
-                  <span style={{ color: '#10b981', fontWeight: 600 }}>Betalt: {stats.paid}</span>
-                </div>
-                <div>
-                  <span style={{ color: '#f59e0b', fontWeight: 600 }}>Ikke betalt: {stats.unpaid}</span>
-                </div>
-              </div>
+            <div style={{ marginBottom: 10 }}>{getTypeIcon(t.type)}</div>
+            <div style={{ fontSize: 20, fontWeight: 700 }}>{t.type.charAt(0).toUpperCase() + t.type.slice(1)}</div>
+            <div style={{ fontSize: 15, color: '#555', marginTop: 2 }}>{t.count} kunde(r)</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Statistik kort */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+        gap: 28,
+        marginBottom: 32
+      }}>
+        {cards.map(card => (
+          <div key={card.label} style={{
+            background: card.bg,
+            borderRadius: 16,
+            boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
+            padding: 28,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'flex-start',
+            minHeight: 120,
+            opacity: 0,
+            animation: `fadeIn 0.5s ease-out ${(typeStats.length * 0.1) + (cards.indexOf(card) * 0.1)}s forwards`
+          }}>
+            <div style={{ marginBottom: 16 }}>{card.icon}</div>
+            <div style={{ fontSize: 32, fontWeight: 700 }}>{card.value}</div>
+            <div style={{ fontSize: 16, color: '#555', marginTop: 4 }}>{card.label}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Betalingsstatus */}
+      <div style={{
+        display: 'flex',
+        justifyContent: 'center',
+        marginBottom: 32
+      }}>
+        <div style={{
+          background: '#fff',
+          borderRadius: 16,
+          boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
+          padding: 32,
+          maxWidth: 420,
+          minWidth: 320,
+          opacity: 0,
+          animation: `fadeIn 0.5s ease-out ${(typeStats.length * 0.1) + (cards.length * 0.1)}s forwards`
+        }}>
+          <h2 style={{ fontSize: 22, fontWeight: 600, marginBottom: 18, textAlign: 'center' }}>Betalingsstatus</h2>
+          <div style={{ textAlign: 'center', fontSize: 18, marginTop: 20 }}>
+            <div style={{ marginBottom: 12 }}>
+              <span style={{ color: '#10b981', fontWeight: 600 }}>Betalt: {stats.paid}</span>
+            </div>
+            <div>
+              <span style={{ color: '#f59e0b', fontWeight: 600 }}>Ikke betalt: {stats.unpaid}</span>
             </div>
           </div>
-        </>
-      )}
+        </div>
+      </div>
     </div>
   );
 }

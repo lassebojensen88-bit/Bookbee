@@ -1596,8 +1596,8 @@ const ClientDashboard: React.FC<ClientDashboardProps> = ({ salonId }) => {
               <p style={{ margin: 0, fontSize: 15 }}>{profile.address}</p>
             </div>
             <div>
-              <p style={{ margin: '0 0 4px', fontSize: 13, letterSpacing: '.5px', textTransform: 'uppercase', color: '#888' }}>Kunder denne måned</p>
-              <p style={{ margin: 0, fontSize: 20, fontWeight: 600 }}>{profile.clientCount}</p>
+              <p style={{ margin: '0 0 4px', fontSize: 13, letterSpacing: '.5px', textTransform: 'uppercase', color: '#888' }}>Klipninger denne måned</p>
+              <p style={{ margin: 0, fontSize: 20, fontWeight: 600 }}>{profile.appointmentCount}</p>
             </div>
           </div>
         </section>
