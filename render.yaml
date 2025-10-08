@@ -11,7 +11,7 @@ services:
     # Midlertidig debug startCommand: printer DB længde, forsøger migrate status først.
     # Når alt virker: skift tilbage til: npx prisma migrate deploy && node dist/index.js
     startCommand: >-
-      sh -c 'echo Starting backend (parallel db push with timeout); echo DBLEN=$(echo -n "$DATABASE_URL" | wc -c); (timeout 35s npx prisma db push && echo DB_PUSH_DONE || echo "WARN: db push timeout/fail") & node dist/index.js'
+      sh -c 'echo Starting backend parallel db push; echo DBLEN=$(echo -n "$DATABASE_URL" | wc -c); timeout 35s npx prisma db push && echo DB_PUSH_DONE || echo "WARN: db push timeout/fail"; node dist/index.js'
     autoDeploy: true
     healthCheckPath: /health
     envVars:
