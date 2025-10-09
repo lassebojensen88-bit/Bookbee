@@ -32,7 +32,7 @@ export default function Services() {
     description: ''
   });
 
-  // Load services from localStorage on component mount
+  // Load services from API only
   useEffect(() => {
     if (!salonId) return;
     let cancelled = false;
@@ -52,9 +52,9 @@ export default function Services() {
         }));
         setServices(mapped);
       } catch (e: any) {
-        // Fallback to localStorage approach
-        setApiError(e?.message || 'Kunne ikke hente services fra API – viser lokal data');
-        loadServices();
+        console.error('Failed to load services:', e);
+        setApiError(e?.message || 'Kunne ikke hente services fra API');
+        setServices([]); // Show empty state instead of localStorage fallback
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -63,86 +63,40 @@ export default function Services() {
     return () => { cancelled = true; };
   }, [salonId]);
 
-  const loadServices = () => {
-    const storageKey = `services_salon_${salonId}`;
-    const savedServices = localStorage.getItem(storageKey);
-    
-    if (savedServices) {
-      try {
-        setServices(JSON.parse(savedServices));
-      } catch (e) {
-        console.error('Failed to parse services:', e);
-        setDefaultServices();
-      }
-    } else {
-      setDefaultServices();
-    }
-  };
-
-  const setDefaultServices = () => {
-    const defaultServices: Service[] = [
-      { id: 1, name: 'Herreklip', price: 249, duration: 0.5, category: 'Herre' },
-      { id: 2, name: 'Herreklip + Skægtrim', price: 329, duration: 1, category: 'Herre' },
-      { id: 3, name: 'Herreklip + Styling', price: 399, duration: 1.5, category: 'Herre' },
-      { id: 4, name: 'Dameklip', price: 349, duration: 1, category: 'Dame' },
-      { id: 5, name: 'Dameklip + Føn', price: 449, duration: 1.5, category: 'Dame' },
-      { id: 6, name: 'Balayage + Klip', price: 899, duration: 2.5, category: 'Dame' },
-      { id: 7, name: 'Hårfarvning', price: 599, duration: 2, category: 'Dame' }
-    ];
-    setServices(defaultServices);
-    saveServices(defaultServices);
-  };
-
-  const saveServices = (servicesToSave: Service[]) => {
-    const storageKey = `services_salon_${salonId}`;
-    localStorage.setItem(storageKey, JSON.stringify(servicesToSave));
-    // Dispatch event to notify other components
-    window.dispatchEvent(new Event('servicesUpdated'));
-  };
-
   const handleAddService = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newService.name.trim() || !newService.price || !newService.duration) {
       alert('Navn, pris og varighed er påkrævet');
       return;
     }
-    const durationHours = parseFloat(newService.duration);
-    const priceNumber = parseFloat(newService.price);
-    const optimistic: Service = {
-      id: Date.now(),
-      name: newService.name.trim(),
-      price: priceNumber,
-      duration: durationHours,
-      category: newService.category.trim() || undefined,
-      description: newService.description.trim() || undefined
-    };
-    setServices(prev => [...prev, optimistic]);
+    
     setSaving(true);
     try {
-      if (salonId) {
-        const created = await createService(Number(salonId), {
-          name: optimistic.name,
-          description: optimistic.description,
-          durationMin: Math.round(durationHours * 60),
-          price: priceNumber.toFixed(2)
-        });
-        // Replace optimistic with actual (id, canonical values)
-        setServices(prev => prev.map(s => s.id === optimistic.id ? {
-          id: created.id,
-          name: created.name,
-          price: parseFloat(created.price),
-          duration: created.durationMin / 60,
-          description: created.description || undefined
-        } : s));
-      } else {
-        saveServices([...services, optimistic]);
-      }
+      const durationHours = parseFloat(newService.duration);
+      const priceNumber = parseFloat(newService.price);
+      
+      const created = await createService(Number(salonId), {
+        name: newService.name.trim(),
+        description: newService.description.trim() || undefined,
+        durationMin: Math.round(durationHours * 60),
+        price: priceNumber.toFixed(2)
+      });
+      
+      // Add to local state
+      const newServiceItem: Service = {
+        id: created.id,
+        name: created.name,
+        price: parseFloat(created.price),
+        duration: created.durationMin / 60,
+        description: created.description || undefined
+      };
+      
+      setServices(prev => [...prev, newServiceItem]);
       setShowAddModal(false);
       setNewService({ name: '', price: '', duration: '', category: '', description: '' });
     } catch (err: any) {
+      console.error('Failed to create service:', err);
       alert('Kunne ikke oprette service: ' + (err.message || 'Ukendt fejl'));
-      // Rollback optimistic
-      setServices(prev => prev.filter(s => s.id !== optimistic.id));
     } finally {
       setSaving(false);
     }
@@ -166,37 +120,36 @@ export default function Services() {
       alert('Navn, pris og varighed er påkrævet');
       return;
     }
-    const priceNumber = parseFloat(newService.price);
-    const durationHours = parseFloat(newService.duration);
-    const original = editingService;
-    const updated: Service = {
-      ...editingService,
-      name: newService.name.trim(),
-      price: priceNumber,
-      duration: durationHours,
-      category: newService.category.trim() || undefined,
-      description: newService.description.trim() || undefined
-    };
-    setServices(prev => prev.map(s => s.id === original.id ? updated : s));
+    
     setSaving(true);
+    const original = editingService;
     try {
-      if (salonId && original.id) {
-        await updateService(original.id, {
-          name: updated.name,
-          description: updated.description,
-          durationMin: Math.round(updated.duration * 60),
-          price: priceNumber.toFixed(2)
-        });
-      } else {
-        saveServices(services.map(s => s.id === original.id ? updated : s));
-      }
+      const priceNumber = parseFloat(newService.price);
+      const durationHours = parseFloat(newService.duration);
+      
+      const updated = await updateService(original.id, {
+        name: newService.name.trim(),
+        description: newService.description.trim() || undefined,
+        durationMin: Math.round(durationHours * 60),
+        price: priceNumber.toFixed(2)
+      });
+      
+      // Update local state with API response
+      const updatedService: Service = {
+        id: updated.id,
+        name: updated.name,
+        price: parseFloat(updated.price),
+        duration: updated.durationMin / 60,
+        description: updated.description || undefined
+      };
+      
+      setServices(prev => prev.map(s => s.id === original.id ? updatedService : s));
       setShowEditModal(false);
       setEditingService(null);
       setNewService({ name: '', price: '', duration: '', category: '', description: '' });
     } catch (err: any) {
+      console.error('Failed to update service:', err);
       alert('Kunne ikke opdatere service: ' + (err.message || 'Ukendt fejl'));
-      // Rollback
-      setServices(prev => prev.map(s => s.id === original.id ? original : s));
     } finally {
       setSaving(false);
     }
@@ -205,18 +158,13 @@ export default function Services() {
   const handleDeleteService = async (service: Service) => {
     const confirmDelete = window.confirm(`Er du sikker på at du vil slette "${service.name}"?\n\nDenne handling kan ikke fortrydes.`);
     if (!confirmDelete) return;
-    const prev = services;
-    setServices(prev.filter(s => s.id !== service.id));
+    
     try {
-      if (salonId && service.id) {
-        await deleteService(service.id);
-      } else {
-        saveServices(prev.filter(s => s.id !== service.id));
-      }
+      await deleteService(service.id);
+      setServices(prev => prev.filter(s => s.id !== service.id));
     } catch (err: any) {
+      console.error('Failed to delete service:', err);
       alert('Kunne ikke slette service: ' + (err.message || 'Ukendt fejl'));
-      // rollback
-      setServices(prev);
     }
   };
 
