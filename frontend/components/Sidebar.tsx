@@ -3,9 +3,12 @@ import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { DashboardIcon, SalonIcon, LogoutIcon } from './icons';
 import React from 'react';
+import { useTheme } from '../contexts/ThemeContext';
 
 export default function Sidebar() {
   const router = useRouter();
+  const { isDark, toggleTheme } = useTheme();
+  
   const navItems = [
     {
       label: 'Dashboard',
@@ -28,8 +31,8 @@ export default function Sidebar() {
     <aside style={{
       width: '100%',
       height: '100%',
-      background: 'transparent',
-      color: '#222',
+      background: isDark ? '#1f2937' : 'transparent',
+      color: isDark ? '#f3f4f6' : '#222',
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'center',
@@ -53,11 +56,11 @@ export default function Sidebar() {
           width: 28,
           height: 28,
           borderRadius: '50%',
-          border: '2px solid #222',
+          border: `2px solid ${isDark ? '#f3f4f6' : '#222'}`,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          color: '#222',
+          color: isDark ? '#f3f4f6' : '#222',
           fontSize: 14,
           fontWeight: 700
         }}>
@@ -69,7 +72,7 @@ export default function Sidebar() {
       {/* Separator Line */}
       <div style={{ 
         height: 1, 
-        background: '#e5e7eb', 
+        background: isDark ? '#374151' : '#e5e7eb', 
         margin: '0 18px 18px 18px',
         width: 'calc(100% - 36px)'
       }} />
@@ -95,14 +98,14 @@ export default function Sidebar() {
                 width: 32,
                 height: 32,
                 borderRadius: '50%',
-                background: '#e5e7eb',
+                background: isDark ? '#374151' : '#e5e7eb',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 flexShrink: 0
               }}>
                 <div style={{ 
-                  color: active ? '#222' : '#555',
+                  color: active ? (isDark ? '#f3f4f6' : '#222') : (isDark ? '#9ca3af' : '#555'),
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center'
@@ -112,10 +115,10 @@ export default function Sidebar() {
               </div>
               {/* Text with active state */}
               <span style={{
-                color: active ? '#222' : '#555',
+                color: active ? (isDark ? '#f3f4f6' : '#222') : (isDark ? '#9ca3af' : '#555'),
                 fontSize: 15,
                 fontWeight: 500,
-                background: active ? '#e5e7eb' : 'transparent',
+                background: active ? (isDark ? '#374151' : '#e5e7eb') : 'transparent',
                 borderRadius: 6,
                 padding: '6px 12px',
                 transition: 'all 0.15s',
@@ -128,6 +131,54 @@ export default function Sidebar() {
         })}
       </nav>
       <div style={{ flex: 1 }} />
+      
+      {/* Dark Mode Toggle */}
+      <button
+        onClick={toggleTheme}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 8,
+          background: isDark ? '#374151' : '#f3f4f6',
+          color: isDark ? '#f3f4f6' : '#222',
+          border: 'none',
+          borderRadius: 8,
+          fontSize: 14,
+          fontWeight: 500,
+          padding: '10px 20px',
+          cursor: 'pointer',
+          transition: 'all 0.15s',
+          width: 'calc(100% - 56px)',
+          marginBottom: 12
+        }}
+        title={isDark ? 'Skift til lyst tema' : 'Skift til mørkt tema'}
+      >
+        {isDark ? (
+          <>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="5"/>
+              <line x1="12" y1="1" x2="12" y2="3"/>
+              <line x1="12" y1="21" x2="12" y2="23"/>
+              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+              <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+              <line x1="1" y1="12" x2="3" y2="12"/>
+              <line x1="21" y1="12" x2="23" y2="12"/>
+              <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+              <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+            </svg>
+            Lyst tema
+          </>
+        ) : (
+          <>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+            </svg>
+            Mørkt tema
+          </>
+        )}
+      </button>
+      
       <div style={{ width: '100%', display: 'flex', justifyContent: 'center', paddingBottom: 18 }}>
         <button
           onClick={handleLogout}
@@ -136,7 +187,7 @@ export default function Sidebar() {
             alignItems: 'center',
             justifyContent: 'center',
             gap: 10,
-            background: '#222',
+            background: isDark ? '#111827' : '#222',
             color: '#fff',
             border: 'none',
             borderRadius: 8,

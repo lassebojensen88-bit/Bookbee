@@ -1,13 +1,12 @@
 import React from 'react';
-import ClientSidebar from './ClientSidebar';
+import Sidebar from './Sidebar';
 import { useTheme } from '../contexts/ThemeContext';
 
-interface ClientLayoutProps {
+interface AdminLayoutProps {
   children: React.ReactNode;
-  salonId?: string;
 }
 
-export default function ClientLayout({ children, salonId }: ClientLayoutProps) {
+export default function AdminLayout({ children }: AdminLayoutProps) {
   const { isDark } = useTheme();
   
   return (
@@ -19,9 +18,14 @@ export default function ClientLayout({ children, salonId }: ClientLayoutProps) {
         height: '100vh',
         background: isDark ? '#1f2937' : '#ffffff'
       }}>
-        <ClientSidebar salonId={salonId} />
+        <Sidebar />
       </div>
-      <main style={{ marginLeft: 220, flexGrow: 1, background: isDark ? '#111827' : '#fafafa' }}>
+      <main style={{ 
+        marginLeft: 220, 
+        flexGrow: 1, 
+        background: isDark ? '#111827' : '#fafafa',
+        minHeight: '100vh'
+      }}>
         {children}
       </main>
     </div>
