@@ -55,6 +55,10 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     try { const data = await res.json(); msg = data.error || msg; } catch {}
     throw new Error(msg);
   }
+  // Handle 204 No Content responses (e.g., DELETE operations)
+  if (res.status === 204 || res.headers.get('content-length') === '0') {
+    return undefined as T;
+  }
   return res.json();
 }
 
