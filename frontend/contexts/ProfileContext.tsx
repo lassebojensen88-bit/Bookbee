@@ -8,6 +8,7 @@ interface Profile {
   address: string;
   type: string;
   appointmentCount: number; // Changed from clientCount to appointmentCount
+  profileImage?: string; // Base64 encoded image or URL
 }
 
 interface ProfileContextType {
@@ -16,6 +17,7 @@ interface ProfileContextType {
   refreshProfile: () => void;
   updateProfile: (newProfile: Partial<Profile>) => void;
   updateAppointmentCount: () => void; // Changed from updateClientCount
+  updateProfileImage: (imageBase64: string) => void;
 }
 
 const ProfileContext = createContext<ProfileContextType | undefined>(undefined);
@@ -44,6 +46,7 @@ export const ProfileProvider: React.FC<ProfileProviderProps> = ({ children, salo
     appointmentCount: 0,
   });
   const [loading, setLoading] = useState(true);
+  const [hasLoaded, setHasLoaded] = useState(false); // Track if we've already loaded for this salon
 
   const loadProfile = async () => {
     try {
@@ -88,6 +91,7 @@ export const ProfileProvider: React.FC<ProfileProviderProps> = ({ children, salo
           address: salon.address,
           type: salon.type,
           appointmentCount: 0, // Temporary, will be updated by calculateAndSetAppointmentCount
+          profileImage: salonId ? localStorage.getItem(`profileImage_salon_${salonId}`) || undefined : undefined,
         };
         
         console.log('🏪 Setting profile to:', newProfile);
@@ -172,8 +176,20 @@ export const ProfileProvider: React.FC<ProfileProviderProps> = ({ children, salo
 
   const updateAppointmentCount = calculateAndSetAppointmentCount;
 
+  const updateProfileImage = (imageBase64: string) => {
+    setProfile(prev => ({ ...prev, profileImage: imageBase64 }));
+    // Save to localStorage for persistence
+    if (salonId) {
+      localStorage.setItem(`profileImage_salon_${salonId}`, imageBase64);
+    }
+  };
+
   useEffect(() => {
-    loadProfile();
+    // Only load if we haven't loaded for this salonId yet, or if salonId changes
+    if (!hasLoaded || (salonId && profile.id !== parseInt(salonId))) {
+      loadProfile();
+      setHasLoaded(true);
+    }
   }, [salonId]); // Re-run when salonId changes
 
   // Separate effect for client count calculation
@@ -189,13 +205,24 @@ export const ProfileProvider: React.FC<ProfileProviderProps> = ({ children, salo
       calculateAndSetAppointmentCount();
     };
     
+    // Listen for profile updates (e.g., from profile page edits)
+    const handleProfileUpdate = (event: CustomEvent) => {
+      console.log('👤 Profile update detected from localStorage');
+      const updatedProfile = event.detail;
+      if (updatedProfile && updatedProfile.id === profile.id) {
+        setProfile(prev => ({ ...prev, ...updatedProfile }));
+      }
+    };
+    
     window.addEventListener('bookingsUpdated', handleBookingUpdate);
     window.addEventListener('storage', handleBookingUpdate);
+    window.addEventListener('profileUpdated' as any, handleProfileUpdate as any);
     
     return () => {
       clearTimeout(timer);
       window.removeEventListener('bookingsUpdated', handleBookingUpdate);
       window.removeEventListener('storage', handleBookingUpdate);
+      window.removeEventListener('profileUpdated' as any, handleProfileUpdate as any);
     };
   }, [salonId, profile.id]); // Re-run when salonId or profile.id changes
 
@@ -205,6 +232,7 @@ export const ProfileProvider: React.FC<ProfileProviderProps> = ({ children, salo
     refreshProfile,
     updateProfile,
     updateAppointmentCount,
+    updateProfileImage,
   };
 
   return (

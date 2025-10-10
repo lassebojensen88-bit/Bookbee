@@ -22,9 +22,12 @@ export default function MyApp({ Component, pageProps }: AppProps) {
   }
 
   if (isClientPortal) {
+    // Extract salonId from URL for salon-specific routes like /client/[salonId]/dashboard
+    const salonId = router.query.salonId as string | undefined;
+    
     // Client portal skal stadig have profile context men ikke admin layout
     return (
-      <ProfileProvider>
+      <ProfileProvider salonId={salonId}>
         <Component {...pageProps} />
       </ProfileProvider>
     );
@@ -32,11 +35,11 @@ export default function MyApp({ Component, pageProps }: AppProps) {
 
   // Admin-side: sidebar og indhold som før
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', background: '#f7f7f7', position: 'relative' }}>
-      <div style={{ position: 'fixed', left: 0, top: 0, zIndex: 1, width: 220, height: 'calc(100vh - 40px)', margin: 20, borderRadius: 18, boxShadow: '0 4px 24px rgba(0,0,0,0.10)', overflow: 'hidden', background: 'rgba(255,255,255,0.92)' }}>
+    <div style={{ display: 'flex', minHeight: '100vh' }}>
+      <div style={{ width: 220, borderRight: '1px solid #eee', position: 'fixed', height: '100vh' }}>
         <Sidebar />
       </div>
-      <main style={{ marginLeft: 260, flex: 1, padding: '40px 5vw' }}>
+      <main style={{ marginLeft: 220, flexGrow: 1, background: '#fafafa' }}>
         <Component {...pageProps} />
       </main>
     </div>

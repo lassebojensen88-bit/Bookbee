@@ -9,7 +9,7 @@ interface ClientProfileProps {
 }
 
 export default function ClientProfile({ salonId }: ClientProfileProps) {
-  const { profile, loading, refreshProfile, updateProfile } = useProfile();
+  const { profile, loading, refreshProfile, updateProfile, updateProfileImage } = useProfile();
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({
     id: 0,
@@ -101,14 +101,19 @@ export default function ClientProfile({ salonId }: ClientProfileProps) {
     })
     .then(updatedSalon => {
       // Update the global profile context
-      updateProfile({
+      const updatedProfile = {
         id: updatedSalon.id,
         salonName: updatedSalon.name,
         ownerName: updatedSalon.owner,
         email: updatedSalon.email,
         address: updatedSalon.address,
         type: updatedSalon.type,
-      });
+      };
+      updateProfile(updatedProfile);
+      
+      // Dispatch custom event to notify other components
+      window.dispatchEvent(new CustomEvent('profileUpdated', { detail: updatedProfile }));
+      
       setEditing(false);
     })
     .catch(error => {
@@ -180,6 +185,20 @@ export default function ClientProfile({ salonId }: ClientProfileProps) {
 
   const publicPageUrl = publicConfig && (salonId || profile.id) ? `/p/${salonId || profile.id}` : null;
 
+  // Handle profile image upload
+  const handleProfileImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    try {
+      const base64 = await fileToBase64(file);
+      updateProfileImage(base64);
+    } catch (error) {
+      console.error('Failed to upload profile image:', error);
+      alert('Kunne ikke uploade profilbillede. Prøv igen.');
+    }
+  };
+
   return (
     <ClientLayout salonId={salonId}>
       <div style={{ padding: 32, maxWidth: 900, margin: '0 auto' }}>
@@ -190,6 +209,81 @@ export default function ClientProfile({ salonId }: ClientProfileProps) {
           </div>
         ) : !editing ? (
           <>
+            {/* Profile Image Section */}
+            <div style={{ background: '#fff', borderRadius: 16, boxShadow: '0 2px 12px rgba(0,0,0,0.06)', padding: 32, marginBottom: 32 }}>
+              <h2 style={{ fontSize: 24, fontWeight: 600, marginBottom: 20 }}>Profilbillede</h2>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 24, marginBottom: 20 }}>
+                {/* Profile Avatar Preview */}
+                <div style={{
+                  width: 80,
+                  height: 80,
+                  borderRadius: '50%',
+                  backgroundColor: profile.profileImage ? 'transparent' : '#111827',
+                  border: '3px solid #6366f1',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#ffffff',
+                  fontSize: 32,
+                  fontWeight: 700,
+                  overflow: 'hidden'
+                }}>
+                  {profile.profileImage ? (
+                    <img 
+                      src={profile.profileImage} 
+                      alt="Profilbillede"
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    />
+                  ) : (
+                    profile.salonName.charAt(0).toUpperCase()
+                  )}
+                </div>
+                
+                <div>
+                  <label style={{ 
+                    background: '#6366f1', 
+                    color: '#fff', 
+                    border: 'none', 
+                    borderRadius: 8, 
+                    padding: '10px 20px', 
+                    fontWeight: 500, 
+                    fontSize: 14, 
+                    cursor: 'pointer',
+                    display: 'inline-block'
+                  }}>
+                    Vælg profilbillede
+                    <input 
+                      type="file" 
+                      accept="image/*" 
+                      onChange={handleProfileImageUpload}
+                      style={{ display: 'none' }}
+                    />
+                  </label>
+                  {profile.profileImage && (
+                    <button 
+                      onClick={() => updateProfileImage('')}
+                      style={{ 
+                        background: '#ef4444', 
+                        color: '#fff', 
+                        border: 'none', 
+                        borderRadius: 8, 
+                        padding: '8px 16px', 
+                        fontWeight: 500, 
+                        fontSize: 14, 
+                        cursor: 'pointer',
+                        marginLeft: 12
+                      }}
+                    >
+                      Fjern billede
+                    </button>
+                  )}
+                  <div style={{ fontSize: 12, color: '#666', marginTop: 8 }}>
+                    Understøtter JPG, PNG og GIF filer
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <div style={{ background: '#fff', borderRadius: 16, boxShadow: '0 2px 12px rgba(0,0,0,0.06)', padding: 32, marginBottom: 32 }}>
               <div style={{ marginBottom: 18 }}><b>Salonnavn:</b> {profile.salonName}</div>
               <div style={{ marginBottom: 18 }}><b>Ejer:</b> {profile.ownerName}</div>

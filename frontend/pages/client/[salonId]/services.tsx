@@ -387,7 +387,7 @@ export default function Services() {
             </div>
           ))}
           
-          {services.length === 0 && (
+          {services.length === 0 && !loading && (
             <div style={{
               padding: '48px 24px',
               textAlign: 'center',
@@ -395,7 +395,20 @@ export default function Services() {
             }}>
               <SalonIcon style={{ width: 48, height: 48, margin: '0 auto 16px', opacity: 0.3 }} />
               <div style={{ fontSize: 18, marginBottom: 8 }}>Ingen services endnu</div>
-              <div style={{ fontSize: 14 }}>Klik på "Tilføj Service" for at komme i gang</div>
+              <div style={{ fontSize: 14, marginBottom: 16 }}>Klik på "Tilføj Service" for at komme i gang</div>
+              {apiError && (
+                <div style={{ 
+                  background: '#fef2f2', 
+                  color: '#991b1b', 
+                  padding: '12px 16px', 
+                  borderRadius: 8,
+                  fontSize: 14,
+                  marginTop: 16,
+                  display: 'inline-block'
+                }}>
+                  <strong>API Fejl:</strong> {apiError}
+                </div>
+              )}
             </div>
           )}
         </div>
