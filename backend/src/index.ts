@@ -12,6 +12,17 @@ import cors from 'cors';
 // import { JsonStorage } from './storage'; // Midlertidig: erstattes af Prisma
 import prisma from './prismaClient';
 
+// Helper function to generate URL-friendly slug
+function generateSlug(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/æ/g, 'ae')
+    .replace(/ø/g, 'oe')
+    .replace(/å/g, 'aa')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
 const app = express();
 
 // Dynamisk CORS: Lokalt + (kommasepareret) ALLOWED_ORIGINS fra env
@@ -68,6 +79,18 @@ app.get('/salons/:id', async (req: Request, res: Response) => {
   }
 });
 
+// Hent salon by slug (til subdomain routing)
+app.get('/salons/by-slug/:slug', async (req: Request, res: Response) => {
+  try {
+    const { slug } = req.params;
+    const salon = await prisma.salon.findUnique({ where: { slug } });
+    if (!salon) return res.status(404).json({ error: 'Salon ikke fundet' });
+    res.json(salon);
+  } catch (error) {
+    res.status(500).json({ error: 'Kunne ikke hente salon' });
+  }
+});
+
 app.post('/salons', async (req: Request, res: Response) => {
   try {
     const { name, owner, address, email, type } = req.body;
@@ -78,7 +101,16 @@ app.post('/salons', async (req: Request, res: Response) => {
     if (existing) {
       return res.status(400).json({ error: 'En kunde med denne email findes allerede' });
     }
-    const salon = await prisma.salon.create({ data: { name, owner, address, email, type } });
+    
+    // Generate unique slug
+    let slug = generateSlug(name);
+    let counter = 1;
+    while (await prisma.salon.findUnique({ where: { slug } })) {
+      slug = `${generateSlug(name)}-${counter}`;
+      counter++;
+    }
+    
+    const salon = await prisma.salon.create({ data: { name, slug, owner, address, email, type } });
     res.status(201).json(salon);
   } catch (error) {
     res.status(500).json({ error: 'Kunne ikke oprette kunde' });
@@ -88,16 +120,21 @@ app.post('/salons', async (req: Request, res: Response) => {
 app.patch('/salons/:id', async (req: Request, res: Response) => {
   try {
     const id = Number(req.params.id);
-    const { name, owner, address, email, type, paid, publicConfig } = req.body;
+    const { name, owner, address, email, type, paid, publicConfig, slug } = req.body;
     const existing = await prisma.salon.findUnique({ where: { id } });
     if (!existing) return res.status(404).json({ error: 'Kunde ikke fundet' });
     if (email && email !== existing.email) {
       const conflict = await prisma.salon.findUnique({ where: { email } });
       if (conflict) return res.status(400).json({ error: 'Email bruges allerede' });
     }
+    // Check slug uniqueness if provided and different
+    if (slug && slug !== existing.slug) {
+      const slugConflict = await prisma.salon.findUnique({ where: { slug } });
+      if (slugConflict) return res.status(400).json({ error: 'Slug bruges allerede' });
+    }
     const salon = await prisma.salon.update({
       where: { id },
-      data: { name, owner, address, email, type, paid, publicConfig }
+      data: { name, slug, owner, address, email, type, paid, publicConfig }
     });
     res.json(salon);
   } catch (error) {

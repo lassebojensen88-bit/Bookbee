@@ -22,6 +22,7 @@ services:
       - key: ALLOWED_ORIGINS
         value: http://localhost:3000,https://bookbee-flame.vercel.app
       - key: DATABASE_URL
-        sync: false  # Pooled connection (port 6543) - bruges til runtime
+        sync: false  # Pooled connection (port 6543) - MUST include ?pgbouncer=true for Supabase
+                     # Example: postgresql://user:pass@host:6543/db?pgbouncer=true
       - key: DIRECT_URL
         sync: false  # Direct connection (port 5432) - bruges til migrations (kun lokalt)

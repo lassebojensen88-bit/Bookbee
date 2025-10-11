@@ -12,6 +12,7 @@ async function main() {
     },
     create: {
       name: 'Beebob',
+      slug: 'beebob',
       owner: 'Benny Bob',
       email: 'beebob@salon.dk',
       address: 'Hovedgade 1, 1234 Byen',
@@ -26,6 +27,7 @@ async function main() {
     },
     create: {
       name: 'Hair by L',
+      slug: 'hairbyl',
       owner: 'Linda L',
       email: 'hairbyl@salon.dk',
       address: 'Strøget 2, 5678 Byen',

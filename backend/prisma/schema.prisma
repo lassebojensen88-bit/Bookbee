@@ -22,6 +22,7 @@ model Admin {
 model Salon {
   id            Int       @id @default(autoincrement())
   name          String
+  slug          String    @unique  // URL-venlig subdomain (e.g., "beebo" for beebo.bookbee.dk)
   owner         String
   email         String    @unique
   address       String
